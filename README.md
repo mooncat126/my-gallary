@@ -1,2 +1,1 @@
-# my-gallary
-🎨 my-gallary ios app
+# my-gallary-ios
