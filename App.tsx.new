@@ -378,7 +378,7 @@ export default function App() {
             style={styles.appIcon}
             resizeMode="contain"
           />
-          <Text style={[styles.brand, { color: P.text }]}>MyGallery</Text>
+          <Text style={[styles.brand, { color: P.text }]}>小画廊</Text>
         </View>
         <Pressable
           onPress={() => setManualTheme(theme === "dark" ? "light" : "dark")}

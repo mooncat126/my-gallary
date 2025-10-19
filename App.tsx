@@ -1,3 +1,4 @@
+// App.tsx
 import React, { useEffect, useState } from "react";
 import MaskedView from "@react-native-masked-view/masked-view";
 import { LinearGradient } from "expo-linear-gradient";
@@ -6,14 +7,13 @@ import {
   Image,
   Keyboard,
   Pressable,
-  SafeAreaView,
   StyleSheet,
   Text,
   TextInput,
   View,
   useColorScheme,
 } from "react-native";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import Svg, { Rect } from "react-native-svg";
 import { Ionicons } from "@expo/vector-icons";
@@ -22,6 +22,11 @@ import ImageWithPlaceholder from "./components/ImageWithPlaceholder";
 import ImageDetailsModal from "./components/ImageDetailsModal";
 import ArtStrokeBg from "./components/ArtStrokeBg";
 import LoadingOverlay from "./components/LoadingOverlay";
+import LoginScreen from "./components/LoginScreen";
+import AccountMenu from "./components/AccountMenu";
+import AccountDetailsScreen from "./components/AccountDetailsScreen";
+import { AuthProvider, useAuth } from "./context/AuthContext";
+import FavoritesScreen from "./components/FavoritesScreen";
 
 /** ---------- Theme (Black/White/Gray + Line Style) ---------- */
 const Light = {
@@ -159,15 +164,20 @@ function dedupeByArtistTitle(items: Item[]) {
   return out;
 }
 
-
-/** =================== App =================== */
-export default function App() {
+/** =================== Main App Content =================== */
+function AppContent() {
   const sys = useColorScheme();
   const [manualTheme, setManualTheme] = useState<"light" | "dark" | null>(null);
   const theme = manualTheme ?? (sys === "dark" ? "dark" : "light");
   const P = theme === "dark" ? Dark : Light;
   const isLight = theme === "light";
 
+  // 页面状态管理
+  const [currentPage, setCurrentPage] = useState<
+    "main" | "account" | "favorites"
+  >("main");
+
+  // 主页面状态
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<Item[]>([]);
   const [loading, setLoading] = useState(false);
@@ -176,46 +186,72 @@ export default function App() {
   // 模态框状态
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedItem, setSelectedItem] = useState<Item | null>(null);
-  const [favorites, setFavorites] = useState<Set<string>>(new Set());
+
+  // Use auth context
+  const { user, favorites, toggleFavorite } = useAuth();
 
   // For placing the "top fade mask" position and height
   const [searchH, setSearchEdgeY] = useState(0);
-  const topFadeHeight = 136; // Top fade-out height (larger = more visible)
 
-  // Load favorites state
-  useEffect(() => {
-    const loadFavorites = async () => {
-      try {
-        const savedFavorites = await AsyncStorage.getItem('favorites');
-        if (savedFavorites) {
-          setFavorites(new Set(JSON.parse(savedFavorites)));
+  // 今日推荐 state
+  const [todayPick, setTodayPick] = useState<Item | null>(null);
+  const [pickLoading, setPickLoading] = useState(false);
+  const [pickErr, setPickErr] = useState<string | null>(null);
+
+  // 有名画家关键词，提升命中率
+  const POPULAR_KEYWORDS = [
+    "Van Gogh",
+    "Monet",
+    "Picasso",
+    "Rembrandt",
+    "Da Vinci",
+    "Matisse",
+    "Klimt",
+    "Renoir",
+    "Degas",
+    "Goya",
+    "Cézanne",
+    "Turner",
+  ];
+
+  // 获取今日推荐（随机1幅）
+  async function fetchTodayPick(retry = 3) {
+    try {
+      setPickLoading(true);
+      setPickErr(null);
+      setTodayPick(null);
+
+      for (let i = 0; i < retry; i++) {
+        const kw =
+          POPULAR_KEYWORDS[Math.floor(Math.random() * POPULAR_KEYWORDS.length)];
+        const [met, aic] = await Promise.all([
+          fetchFromMet(kw, 50),
+          fetchFromAIC(kw, 50),
+        ]);
+        const merged = dedupeByArtistTitle([...met, ...aic]);
+        if (merged.length) {
+          const pick = merged[Math.floor(Math.random() * merged.length)];
+          setTodayPick(pick);
+          return;
         }
-      } catch (error) {
-        console.error('Failed to load favorites', error);
       }
-    };
+      setPickErr("获取推荐失败，请稍后重试");
+    } catch {
+      setPickErr("获取推荐时发生错误");
+    } finally {
+      setPickLoading(false);
+    }
+  }
 
-    loadFavorites();
+  // 首次进入获取“今日推荐”
+  useEffect(() => {
+    fetchTodayPick();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Handle favorite/unfavorite
-  const handleToggleFavorite = async (id: string) => {
-    const newFavorites = new Set(favorites);
-
-    if (newFavorites.has(id)) {
-      newFavorites.delete(id);
-    } else {
-      newFavorites.add(id);
-    }
-
-    setFavorites(newFavorites);
-
-    // Save to AsyncStorage
-    try {
-      await AsyncStorage.setItem('favorites', JSON.stringify([...newFavorites]));
-    } catch (error) {
-      console.error('Failed to save favorites', error);
-    }
+  // Use the toggleFavorite function from AuthContext
+  const handleToggleFavorite = (id: string) => {
+    toggleFavorite(id);
   };
 
   // Open modal
@@ -269,228 +305,446 @@ export default function App() {
     }
   }
 
-  return (
-    <SafeAreaView style={[styles.root, { backgroundColor: P.bg }]}>
-      <StatusBar style={theme === "dark" ? "light" : "dark"} />
-      <ArtStrokeBg color={P.border} />
+  // 渲染当前页面内容
+  const renderContent = () => {
+    if (currentPage === "account") {
+      return (
+        <AccountDetailsScreen
+          theme={theme}
+          colors={P}
+          onClose={() => setCurrentPage("main")}
+        />
+      );
+    }
 
-      {/* Header */}
-      <View style={styles.topbar}>
-        <View style={styles.brandContainer}>
-          <Image
-            source={
-              theme === "dark"
-                ? require("./assets/app-icon-dark.png")
-                : require("./assets/app-icon.png")
-            }
-            style={styles.appIcon}
-            resizeMode="contain"
-          />
-          <Text style={[styles.brand, { color: P.text }]}>MyGallery</Text>
-        </View>
-        <Pressable
-          onPress={() => setManualTheme(theme === "dark" ? "light" : "dark")}
-          hitSlop={10}
-          style={styles.themeBtn}
-        >
-          {theme === "dark" ? (
-            <Ionicons name="sunny-outline" size={20} color={P.text} />
-          ) : (
-            <Ionicons name="moon-outline" size={20} color={P.text} />
-          )}
-        </Pressable>
-      </View>
+    if (currentPage === "favorites") {
+      return (
+        <FavoritesScreen
+          theme={theme}
+          colors={P}
+          onBack={() => setCurrentPage("main")}
+        />
+      );
+    }
 
-      {/* Search area (light paper with shadow / dark flat) */}
-      <View
-        style={[styles.searchWrap, isLight && styles.paperShadow]}
-        onLayout={(e) =>
-          setSearchEdgeY(e.nativeEvent.layout.y + e.nativeEvent.layout.height)
-        }
-      >
-        <View
-          style={[
-            styles.searchRow,
-            { borderColor: P.border, backgroundColor: P.panel },
-          ]}
-        >
-          <TextInput
-            style={[styles.input, { color: P.text }]}
-            placeholder="Enter artist or artwork (Monet / Van Gogh)"
-            placeholderTextColor={P.hint}
-            value={query}
-            onChangeText={setQuery}
-            returnKeyType="search"
-            onSubmitEditing={handleSearch}
-          />
-          <Pressable
-            onPress={handleSearch}
-            disabled={loading || !query.trim()}
-            style={({ pressed }) => [
-              styles.searchBtnWrap,
-              { opacity: loading || !query.trim() ? 0.5 : 1 },
-              pressed && { transform: [{ scale: 0.98 }] },
-            ]}
-          >
-            <Svg width="88" height="36">
-              <Rect
-                x="0.5"
-                y="0.5"
-                width="87"
-                height="35"
-                rx="8"
-                ry="8"
-                fill="none"
-                stroke={P.border}
-                strokeWidth="1"
-              />
-            </Svg>
-            <Text style={[styles.searchBtnText, { color: P.btnText }]}>
-              {loading ? "Loading…" : "Search"}
-            </Text>
-          </Pressable>
-        </View>
-      </View>
-
-      {/* Fixed scroll fade mask: attached to search area bottom, list scrolling underneath will fade out */}
-      <LinearGradient
-        pointerEvents="none"
-        colors={[
-          theme === "dark" ? "rgba(11,12,14,0.2)" : "rgba(255,255,255,0.2)", // Top close to background
-          theme === "dark" ? "rgba(11,12,14,0.0)" : "rgba(255,255,255,0.0)", // Transparent toward bottom
-        ]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 0, y: 1 }}
-        style={{
-          position: "absolute",
-          top: searchH, // Precisely fit to bottom of search area
-          left: 0,
-          right: 0,
-          height: 120, // Fade range
-          zIndex: 20,
-          borderRadius: 10,     // Rounded corners
-          marginHorizontal: 8,  // Horizontal margin
-        }}
-      />
-
-      {/* Error message */}
-      {err && (
-        <Text
-          style={{
-            color: P.sub,
-            fontSize: 12,
-            marginHorizontal: 16,
-            marginBottom: 6,
-          }}
-        >
-          Error: {err}
-        </Text>
-      )}
-
-      {/* Show error image when no results */}
-      {!loading && !err && query.trim() && results.length === 0 ? (
-        <View style={styles.noResultsContainer}>
-          <Image source={require("./assets/error.png")} style={styles.errorImage} resizeMode="contain" />
-          <Text style={[styles.noResultsText, { color: P.sub }]}>No matching artworks found. Try different keywords.</Text>
-        </View>
-      ) : (
-        /* Results: light paper with shadow, dark flat */
-        <MaskedView
-          style={{flex: 1}}
-          maskElement={
-            <LinearGradient
-              // Black=fully visible, transparent=fully hidden (affects alpha only)
-              colors={["#000", "#000", "rgba(0,0,0,0)"]}
-              locations={[0, 0.92, 1]} // Only bottom 22% has slight fade-out
-              start={{ x: 0, y: 1 }}
-              end={{ x: 0, y: 0 }}
-              style={StyleSheet.absoluteFillObject}
+    return (
+      <>
+        {/* Header */}
+        <View style={styles.topbar}>
+          <View style={styles.brandContainer}>
+            <Image
+              source={
+                theme === "dark"
+                  ? require("./assets/app-icon-dark.png")
+                  : require("./assets/app-icon.png")
+              }
+              style={styles.appIcon}
+              resizeMode="contain"
             />
+            <Text style={[styles.brand, { color: P.text }]}>小画廊</Text>
+          </View>
+          <View style={styles.rightContainer}>
+            <View style={styles.buttonContainer}>
+              <Pressable
+                onPress={() =>
+                  setManualTheme(theme === "dark" ? "light" : "dark")
+                }
+                hitSlop={10}
+                style={styles.themeBtn}
+              >
+                {theme === "dark" ? (
+                  <Ionicons name="sunny-outline" size={20} color={P.text} />
+                ) : (
+                  <Ionicons name="moon-outline" size={20} color={P.text} />
+                )}
+              </Pressable>
+              {user && (
+                <AccountMenu
+                  theme={theme}
+                  colors={P}
+                  onAccountPress={() => setCurrentPage("account")}
+                  onFavoritesPress={() => setCurrentPage("favorites")}
+                />
+              )}
+            </View>
+          </View>
+        </View>
+
+        {/* Search area */}
+        <View
+          style={[styles.searchWrap, isLight && styles.paperShadow]}
+          onLayout={(e) =>
+            setSearchEdgeY(e.nativeEvent.layout.y + e.nativeEvent.layout.height)
           }
         >
-          <FlatList
-          data={results}
-          keyExtractor={(it) => it.id}
-          numColumns={2}
-          // Slight top padding for smoother scrolling
-          contentContainerStyle={{
-            paddingTop: 8,
-            paddingHorizontal: 10,
-            paddingBottom: 16,
-          }}
-          renderItem={({ item }) => (
-            <View style={[styles.cardWrap, isLight && styles.paperShadow]}>
+          <View
+            style={[
+              styles.searchRow,
+              { borderColor: P.border, backgroundColor: P.panel },
+            ]}
+          >
+            <TextInput
+              style={[styles.input, { color: P.text }]}
+              placeholder="请输入画家或画作名 (Monet / Van Gogh)"
+              placeholderTextColor={P.hint}
+              value={query}
+              onChangeText={setQuery}
+              returnKeyType="search"
+              onSubmitEditing={handleSearch}
+            />
+            <Pressable
+              onPress={handleSearch}
+              disabled={loading || !query.trim()}
+              style={({ pressed }) => [
+                styles.searchBtnWrap,
+                { opacity: loading || !query.trim() ? 0.5 : 1 },
+                pressed && { transform: [{ scale: 0.98 }] },
+              ]}
+            >
+              <Svg width="88" height="36">
+                <Rect
+                  x="0.5"
+                  y="0.5"
+                  width="87"
+                  height="35"
+                  rx="8"
+                  ry="8"
+                  fill="none"
+                  stroke={P.border}
+                  strokeWidth="1"
+                />
+              </Svg>
+              <Text style={[styles.searchBtnText, { color: P.btnText }]}>
+                {loading ? "搜索ing" : "搜索"}
+              </Text>
+            </Pressable>
+          </View>
+        </View>
+
+        {/* 今日推荐（仅在未输入搜索词时显示） */}
+        {!query.trim() && (
+          <View style={{ marginHorizontal: 16, marginBottom: 8 }}>
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                marginBottom: 8,
+              }}
+            >
+              <Text
+                style={{ color: P.text, fontSize: 16, fontWeight: "700" }}
+              >
+                今日推荐
+              </Text>
               <Pressable
-                onPress={() => openModal(item)}
+                onPress={() => fetchTodayPick()}
                 style={({ pressed }) => [
-                  styles.card,
-                  { borderColor: P.border, backgroundColor: P.card },
-                  pressed && {
-                    transform: [{ scale: 0.995 }],
-                    borderColor: P.text,
+                  {
+                    marginLeft: "auto",
+                    paddingHorizontal: 10,
+                    paddingVertical: 6,
+                    borderRadius: 8,
+                    borderWidth: 1,
+                    borderColor: P.border,
+                    opacity: pressed ? 0.7 : 1,
                   },
                 ]}
               >
-                <ImageWithPlaceholder
-                  source={{ uri: item.thumb }}
-                  style={[styles.image, { backgroundColor: P.imgPlaceholder }]}
-                  placeholderColor={P.imgPlaceholder}
-                  darkMode={theme === "dark"}
-                />
+                <Text
+                  style={{ color: P.btnText, fontSize: 12, fontWeight: "600" }}
+                >
+                  换一幅
+                </Text>
+              </Pressable>
+            </View>
 
+            {pickLoading ? (
+              <View
+                style={[
+                  styles.card,
+                  { borderColor: P.border, backgroundColor: P.card, padding: 16 },
+                ]}
+              >
+                <Text style={{ color: P.hint }}>加载中...</Text>
+              </View>
+            ) : pickErr ? (
+              <Text style={{ color: P.hint, fontSize: 12 }}>{pickErr}</Text>
+            ) : todayPick ? (
+              <Pressable
+                onPress={() => {
+                  setSelectedItem(todayPick);
+                  setModalVisible(true);
+                }}
+                style={({ pressed }) => [
+                  styles.card,
+                  { borderColor: P.border, backgroundColor: P.card },
+                  pressed && { transform: [{ scale: 0.995 }], borderColor: P.text },
+                ]}
+              >
+                {/* 统一 4:5 比例 */}
+                <View style={styles.imageBox}>
+                  <ImageWithPlaceholder
+                    source={{ uri: todayPick.thumb }}
+                    style={styles.image}
+                    placeholderColor={P.imgPlaceholder}
+                    darkMode={theme === "dark"}
+                    resizeMode="cover"
+                  />
+                </View>
                 <View style={styles.meta}>
                   <Text
                     numberOfLines={2}
                     style={[styles.title, { color: P.text }]}
+                    ellipsizeMode="tail"
                   >
-                    {item.title || "Untitled"}
+                    {todayPick.title || "Untitled"}
                   </Text>
                   <Text
                     numberOfLines={1}
                     style={[styles.artist, { color: P.sub }]}
+                    ellipsizeMode="tail"
                   >
-                    {item.artist || "Unknown"}
+                    {todayPick.artist || "Unknown"}
                   </Text>
-                  {item.dateText ? (
+                  {!!todayPick.dateText && (
                     <Text
                       numberOfLines={1}
-                      style={{ color: P.hint, fontSize: 11 }}
+                      style={[styles.metaText, { color: P.hint }]}
+                      ellipsizeMode="tail"
                     >
-                      {item.dateText}
+                      {todayPick.dateText}
                     </Text>
-                  ) : null}
+                  )}
                 </View>
               </Pressable>
-            </View>
-          )}
+            ) : null}
+          </View>
+        )}
+
+        {/* 错误提示 */}
+        {err && (
+          <Text
+            style={{
+              color: P.hint,
+              fontSize: 12,
+              marginHorizontal: 16,
+              marginBottom: 6,
+            }}
+          >
+            Error: {err}
+          </Text>
+        )}
+
+        {/* 无结果占位 */}
+        {!loading && !err && query.trim() && results.length === 0 ? (
+          <View style={styles.noResultsContainer}>
+            <Image
+              source={require("./assets/error.png")}
+              style={styles.errorImage}
+              resizeMode="contain"
+            />
+            <Text style={[styles.noResultsText, { color: P.border }]}>
+              找不到画作，请换一个关键词吧～
+            </Text>
+          </View>
+        ) : (
+          // 结果列表：统一两列、统一图片比例与字体排版
+          <MaskedView
+            style={{ flex: 1 }}
+            maskElement={
+              <LinearGradient
+                colors={["#000", "#000", "rgba(0,0,0,0)"]}
+                locations={[0, 0.92, 1]}
+                start={{ x: 0, y: 1 }}
+                end={{ x: 0, y: 0 }}
+                style={StyleSheet.absoluteFillObject}
+              />
+            }
+          >
+            <FlatList
+              data={results}
+              keyExtractor={(it) => it.id}
+              numColumns={2}
+              contentContainerStyle={{
+                paddingHorizontal: 12,
+                paddingTop: 8,
+                paddingBottom: 16,
+              }}
+              columnWrapperStyle={{ gap: 12 }}
+              renderItem={({ item }) => (
+                <View style={styles.cardWrap}>
+                  <Pressable
+                    onPress={() => openModal(item)}
+                    style={({ pressed }) => [
+                      styles.card,
+                      { borderColor: P.border, backgroundColor: P.card },
+                      pressed && {
+                        transform: [{ scale: 0.995 }],
+                        borderColor: P.text,
+                      },
+                    ]}
+                  >
+                    {/* 统一 4:5 比例 + 居中裁切 */}
+                    <View style={styles.imageBox}>
+                      <ImageWithPlaceholder
+                        source={{ uri: item.thumb }}
+                        style={styles.image}
+                        placeholderColor={P.imgPlaceholder}
+                        darkMode={theme === "dark"}
+                        resizeMode="cover"
+                      />
+                    </View>
+
+                    <View style={styles.meta}>
+                      <Text
+                        numberOfLines={2}
+                        style={[styles.title, { color: P.text }]}
+                        ellipsizeMode="tail"
+                      >
+                        {item.title || "Untitled"}
+                      </Text>
+                      <Text
+                        numberOfLines={1}
+                        style={[styles.artist, { color: P.sub }]}
+                        ellipsizeMode="tail"
+                      >
+                        {item.artist || "Unknown"}
+                      </Text>
+                      {item.dateText ? (
+                        <Text
+                          numberOfLines={1}
+                          style={[styles.metaText, { color: P.hint }]}
+                          ellipsizeMode="tail"
+                        >
+                          {item.dateText}
+                        </Text>
+                      ) : null}
+                    </View>
+                  </Pressable>
+                </View>
+              )}
+            />
+          </MaskedView>
+        )}
+
+        {/* 顶部固定淡出遮罩 */}
+        <LinearGradient
+          pointerEvents="none"
+          colors={[
+            theme === "dark" ? "rgba(11,12,14,0.2)" : "rgba(255,255,255,0.2)",
+            theme === "dark" ? "rgba(11,12,14,0.0)" : "rgba(255,255,255,0.0)",
+          ]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 0, y: 1 }}
+          style={{
+            position: "absolute",
+            top: searchH,
+            left: 0,
+            right: 0,
+            height: 120,
+            zIndex: 20,
+            borderRadius: 10,
+            marginHorizontal: 8,
+          }}
         />
-      </MaskedView>
-      )}
 
-      {/* Image Details Modal */}
-      <ImageDetailsModal
-        visible={modalVisible}
-        item={selectedItem}
-        theme={theme}
-        colors={P}
-        onClose={closeModal}
-        onToggleFavorite={handleToggleFavorite}
-        isFavorite={selectedItem ? favorites.has(selectedItem.id) : false}
-      />
+        {/* 详情弹窗 */}
+        <ImageDetailsModal
+          visible={modalVisible}
+          item={selectedItem}
+          theme={theme}
+          colors={P}
+          onClose={closeModal}
+          onToggleFavorite={handleToggleFavorite}
+          isFavorite={selectedItem ? favorites.has(selectedItem.id) : false}
+        />
 
-      {/* Optional full-screen Loading (during search) */}
-      <LoadingOverlay
-        visible={loading}
-        stroke={P.border}
-        bg={theme === "dark" ? "rgba(0,0,0,0.28)" : "rgba(255,255,255,0.28)"}
-      />
+        {/* 搜索 Loading */}
+        <LoadingOverlay
+          visible={loading}
+          stroke={theme === "dark" ? "#FFFFFF" : "rgba(0,0,0,1)"}
+          bg={theme === "dark" ? "rgba(0,0,0,0.35)" : "rgba(0,0,0,0.12)"}
+          size={12}
+          gap={6}
+        />
+      </>
+    );
+  };
+
+  return (
+    <SafeAreaView
+      style={[styles.root, { backgroundColor: P.bg }]}
+      edges={["top", "left", "right"]}
+    >
+      <StatusBar style={theme === "dark" ? "light" : "dark"} />
+      <ArtStrokeBg color={P.border} />
+      {renderContent()}
     </SafeAreaView>
   );
 }
 
-/** ---------- 样式 ---------- */
+/** =================== App Wrapper with Auth Provider =================== */
+export default function App() {
+  const sys = useColorScheme();
+  const [manualTheme, setManualTheme] = useState<"light" | "dark" | null>(null);
+  const theme = manualTheme ?? (sys === "dark" ? "dark" : "light");
+  const P = theme === "dark" ? Dark : Light;
+
+  return (
+    <AuthProvider>
+      <AppWrapper
+        theme={theme}
+        colors={P}
+        manualTheme={manualTheme}
+        setManualTheme={setManualTheme}
+      />
+    </AuthProvider>
+  );
+}
+
+interface AppWrapperProps {
+  theme: "light" | "dark";
+  colors: any;
+  manualTheme: "light" | "dark" | null;
+  setManualTheme: (theme: "light" | "dark") => void;
+}
+
+function AppWrapper({
+  theme,
+  colors,
+  manualTheme,
+  setManualTheme,
+}: AppWrapperProps) {
+  const { user, isLoading, setUser } = useAuth();
+
+  if (isLoading) {
+    return (
+      <View style={[styles.loadingContainer, { backgroundColor: colors.bg }]}>
+        <LoadingOverlay
+          visible={true}
+          stroke={colors.border}
+          bg={theme === "dark" ? "rgba(0,0,0,0.28)" : "rgba(255,255,255,0.28)"}
+        />
+      </View>
+    );
+  }
+
+  if (!user) {
+    return (
+      <LoginScreen
+        theme={theme}
+        colors={colors}
+        onLoginSuccess={(loggedInUser) => setUser(loggedInUser)}
+      />
+    );
+  }
+
+  return <AppContent />;
+}
+
 const styles = StyleSheet.create({
   root: { flex: 1, position: "relative" },
+
   topbar: {
     height: 60,
     marginBottom: 10,
@@ -520,7 +774,6 @@ const styles = StyleSheet.create({
     paddingLeft: 10,
   },
   input: { flex: 1, paddingVertical: 10, paddingRight: 8, fontSize: 15 },
-
   searchBtnWrap: {
     width: 88,
     height: 36,
@@ -531,40 +784,56 @@ const styles = StyleSheet.create({
   },
   searchBtnText: { position: "absolute", fontSize: 14, fontWeight: "600" },
 
-  cardWrap: {
-    flex: 1,
-    marginRight: 5,
-    marginLeft: 5,
-    marginBottom: 20,
-    borderRadius: 16,
-    marginTop: 15,
-  },
-  card: { flex: 1, borderRadius: 16, borderWidth: 1, overflow: "hidden" },
+  // 列表：统一两列
+  cardWrap: { flex: 1, marginTop: 15 },
+  card: { borderRadius: 16, borderWidth: 1, overflow: "hidden" },
 
-  // Image area: square ratio; border radius matches card to avoid corner gaps
+  // 统一图片区域 4:5 比例 + 居中裁切
+  imageBox: { width: "100%", aspectRatio: 0.8, backgroundColor: "#0000" },
   image: {
     width: "100%",
-    aspectRatio: 1,
+    height: "100%",
     borderTopLeftRadius: 16,
     borderTopRightRadius: 16,
-    marginTop: -10,
   },
 
-  meta: { paddingHorizontal: 14, paddingVertical: 14 },
-  title: { fontSize: 15, fontWeight: "700", lineHeight: 20 },
-  artist: { fontSize: 13, marginTop: 4 },
+  // 统一字体排版
+  meta: { paddingHorizontal: 12, paddingVertical: 12, gap: 6 },
+  title: {
+    fontSize: 16,
+    lineHeight: 22,
+    fontWeight: "700",
+    letterSpacing: 0.2,
+  },
+  artist: {
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: "600",
+    letterSpacing: 0.1,
+  },
+  metaText: { fontSize: 11, lineHeight: 14, letterSpacing: 0.1 },
 
-  // No results placeholder
+  // 无结果占位
   noResultsContainer: {
     position: "absolute",
-    top: 250, // Offset from top to center the content
+    top: 250,
     left: 0,
     right: 0,
     alignItems: "center",
     justifyContent: "center",
     paddingVertical: 40,
-    zIndex: 10
+    zIndex: 10,
   },
   errorImage: { width: 180, height: 180, marginBottom: 24 },
-  noResultsText: { fontSize: 16, textAlign: "center", marginHorizontal: 40, lineHeight: 24 },
+  noResultsText: {
+    fontSize: 16,
+    textAlign: "center",
+    marginHorizontal: 40,
+    lineHeight: 24,
+  },
+
+  rightContainer: { flexDirection: "row", alignItems: "center" },
+  buttonContainer: { flexDirection: "row", alignItems: "center" },
+
+  loadingContainer: { flex: 1, justifyContent: "center", alignItems: "center" },
 });

@@ -14,10 +14,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { StatusBar } from "expo-status-bar";
 import ImageWithPlaceholder from "./ImageWithPlaceholder";
 
-// Get screen dimensions
 const { width, height } = Dimensions.get("window");
 
-// Define props type
 interface ImageDetailsModalProps {
   visible: boolean;
   item: {
@@ -44,86 +42,65 @@ const ImageDetailsModal: React.FC<ImageDetailsModalProps> = ({
   onToggleFavorite,
   isFavorite,
 }) => {
-  // Handle backdrop press to close modal
-  const handleBackdropPress = () => {
-    onClose();
-  };
-
-  // Prevent content area click events from bubbling
-  const handleContentPress = (e: any) => {
-    e.stopPropagation();
-  };
-
-  // Handle favorite button click
-  const handleFavoritePress = () => {
-    if (item) {
-      onToggleFavorite(item.id);
-    }
-  };
-
-  // If there is no item, don't render anything
   if (!item) return null;
 
+  const topBarBg =
+    theme === "dark" ? "rgba(30,30,30,0.85)" : "rgba(255,255,255,0.92)";
+
   return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="fade"
-      onRequestClose={onClose}
-    >
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <StatusBar style={theme === "dark" ? "light" : "dark"} />
-      <TouchableWithoutFeedback onPress={handleBackdropPress}>
-        <View style={[
-          styles.container,
-          { backgroundColor: theme === "dark" ? "rgba(0,0,0,0.9)" : "rgba(255,255,255,0.9)" }
-        ]}>
-          <TouchableWithoutFeedback onPress={handleContentPress}>
-            <View style={[
-              styles.content,
-              {
-                backgroundColor: colors.card,
-                borderColor: colors.border,
-              }
-            ]}>
-              {/* Close button */}
-              <TouchableOpacity
+      <TouchableWithoutFeedback onPress={onClose}>
+        <View
+          style={[
+            styles.container,
+            {
+              backgroundColor:
+                theme === "dark" ? "rgba(0,0,0,0.9)" : "rgba(255,255,255,0.9)",
+            },
+          ]}
+        >
+          {/* 阻止内容区冒泡关闭 */}
+          <TouchableWithoutFeedback onPress={(e) => e.stopPropagation()}>
+            <View
+              style={[
+                styles.content,
+                { backgroundColor: colors.card, borderColor: colors.border },
+              ]}
+            >
+              {/* 顶部栏：占位固定高度，左右是收藏与关闭按钮 */}
+              <View
                 style={[
-                  styles.closeButton,
-                  { backgroundColor: theme === "dark" ? "rgba(30,30,30,0.85)" : "rgba(255,255,255,0.85)" }
+                  styles.topBar,
+                  {
+                    backgroundColor: topBarBg,
+                    borderBottomColor: colors.border,
+                  },
                 ]}
-                onPress={onClose}
-                hitSlop={{ top: 15, right: 15, bottom: 15, left: 15 }}
               >
-                <Ionicons
-                  name="close-circle"
-                  size={28}
-                  color={colors.text}
-                  style={{ opacity: 0.9 }}
-                />
-              </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.iconBtn}
+                  onPress={() => onToggleFavorite(item.id)}
+                  hitSlop={{ top: 10, right: 10, bottom: 10, left: 10 }}
+                >
+                  <Ionicons
+                    name={isFavorite ? "heart" : "heart-outline"}
+                    size={22}
+                    color={isFavorite ? "#f87171" : colors.text}
+                  />
+                </TouchableOpacity>
 
-              {/* Favorite button */}
-              <TouchableOpacity
-                style={[
-                  styles.favoriteButton,
-                  { backgroundColor: theme === "dark" ? "rgba(30,30,30,0.85)" : "rgba(255,255,255,0.85)" }
-                ]}
-                onPress={handleFavoritePress}
-                hitSlop={{ top: 15, right: 15, bottom: 15, left: 15 }}
-              >
-                <Ionicons
-                  name={isFavorite ? "heart" : "heart-outline"}
-                  size={28}
-                  color={isFavorite ? "#f87171" : colors.text}
-                  style={{ opacity: 0.9 }}
-                />
-              </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.iconBtn}
+                  onPress={onClose}
+                  hitSlop={{ top: 10, right: 10, bottom: 10, left: 10 }}
+                >
+                  <Ionicons name="close" size={22} color={colors.text} />
+                </TouchableOpacity>
+              </View>
 
-              <ScrollView
-                showsVerticalScrollIndicator={false}
-                contentContainerStyle={{ paddingTop: 0 }}
-              >
-                {/* Image area */}
+              <ScrollView showsVerticalScrollIndicator={false}>
+                {/* 图片区域：现在会从 topBar 下面开始，不再被按钮压住 */}
                 <View style={styles.imageContainer}>
                   <ImageWithPlaceholder
                     source={{ uri: item.thumb }}
@@ -134,17 +111,15 @@ const ImageDetailsModal: React.FC<ImageDetailsModalProps> = ({
                   />
                 </View>
 
-                {/* Information area */}
+                {/* 信息区域 */}
                 <View style={styles.infoContainer}>
                   <Text style={[styles.title, { color: colors.text }]}>
                     {item.title || "Untitled"}
                   </Text>
-
                   <Text style={[styles.artist, { color: colors.sub }]}>
                     {item.artist || "Unknown Artist"}
                   </Text>
-
-                  {item.dateText && (
+                  {!!item.dateText && (
                     <Text style={[styles.dateText, { color: colors.sub }]}>
                       {item.dateText}
                     </Text>
@@ -155,7 +130,9 @@ const ImageDetailsModal: React.FC<ImageDetailsModalProps> = ({
                       Source:
                     </Text>
                     <Text style={[styles.sourceText, { color: colors.hint }]}>
-                      {item.source === "met" ? "The Metropolitan Museum of Art" : "Art Institute of Chicago"}
+                      {item.source === "met"
+                        ? "The Metropolitan Museum of Art"
+                        : "Art Institute of Chicago"}
                     </Text>
                   </View>
 
@@ -190,7 +167,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     borderWidth: 1,
     overflow: "hidden",
-    paddingTop: 0, // Ensure no extra padding at the top
+    paddingTop: 0,
     ...Platform.select({
       ios: {
         shadowColor: "#000",
@@ -198,96 +175,44 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.25,
         shadowRadius: 3.84,
       },
-      android: {
-        elevation: 5,
-      },
+      android: { elevation: 5 },
     }),
   },
-  closeButton: {
-    position: "absolute",
-    top: 16,
-    right: 16,
-    zIndex: 10,
-    width: 38,
-    height: 38,
-    backgroundColor: "rgba(255,255,255,0.85)",
-    borderRadius: 19,
+
+  /** 顶部栏：固定高度，左右分布按钮 */
+  topBar: {
+    height: 56,
+    paddingHorizontal: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  iconBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.3,
-    shadowRadius: 3,
-    elevation: 3,
   },
-  favoriteButton: {
-    position: "absolute",
-    top: 16,
-    left: 16,
-    zIndex: 10,
-    width: 38,
-    height: 38,
-    backgroundColor: "rgba(255,255,255,0.85)",
-    borderRadius: 19,
-    alignItems: "center",
-    justifyContent: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.3,
-    shadowRadius: 3,
-    elevation: 3,
-  },
+
   imageContainer: {
     width: "100%",
-    height: width * 0.9, // Keep square aspect ratio
+    height: width * 0.9, // 方形预览
     backgroundColor: "transparent",
-    marginTop: 0, // Changed from -10 to ensure buttons don't overlap with image
-    paddingTop: 10, // Add padding at top for button spacing
   },
-  image: {
-    width: "100%",
-    height: "100%",
-  },
-  infoContainer: {
-    padding: 16,
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: "700",
-    marginBottom: 8,
-    lineHeight: 28,
-  },
-  artist: {
-    fontSize: 16,
-    fontWeight: "600",
-    marginBottom: 8,
-  },
-  dateText: {
-    fontSize: 14,
-    marginBottom: 16,
-  },
-  sourceContainer: {
-    flexDirection: "row",
-    marginBottom: 8,
-  },
-  sourceLabel: {
-    fontSize: 14,
-    marginRight: 5,
-  },
-  sourceText: {
-    fontSize: 14,
-  },
-  idContainer: {
-    flexDirection: "row",
-    marginBottom: 8,
-  },
-  idLabel: {
-    fontSize: 14,
-    marginRight: 5,
-  },
-  idText: {
-    fontSize: 14,
-  },
+  image: { width: "100%", height: "100%" },
+
+  infoContainer: { padding: 16 },
+  title: { fontSize: 20, fontWeight: "700", marginBottom: 8, lineHeight: 28 },
+  artist: { fontSize: 16, fontWeight: "600", marginBottom: 8 },
+  dateText: { fontSize: 14, marginBottom: 16 },
+  sourceContainer: { flexDirection: "row", marginBottom: 8 },
+  sourceLabel: { fontSize: 14, marginRight: 5 },
+  sourceText: { fontSize: 14 },
+  idContainer: { flexDirection: "row", marginBottom: 8 },
+  idLabel: { fontSize: 14, marginRight: 5 },
+  idText: { fontSize: 14 },
 });
 
 export default ImageDetailsModal;
