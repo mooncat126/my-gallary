@@ -1,0 +1,9 @@
+name: Widget Rules
+description: Controls widget refresh schedule and caching.
+version: 1.0.0
+entry: README.md
+rules:
+  daily_push_hour_local: 9
+  cache_days: 7
+  require_attribution: true
+  offline_fallback: true

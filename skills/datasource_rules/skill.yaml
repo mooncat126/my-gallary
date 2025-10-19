@@ -1,0 +1,10 @@
+name: Data Source Rules
+description: Defines API usage, caching, and attribution.
+version: 1.0.0
+entry: README.md
+rules:
+  allowed_sources:
+    - https://collectionapi.metmuseum.org
+    - https://api.artic.edu
+  require_attribution: true
+  max_retry: 3

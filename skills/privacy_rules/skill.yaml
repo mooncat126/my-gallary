@@ -1,0 +1,11 @@
+name: Privacy Rules
+description: Protects user data and ensures privacy compliance.
+version: 1.0.0
+entry: README.md
+rules:
+  require_consent_for_data_upload: true
+  allowed_storage:
+    - local
+    - icloud_private
+  prohibit_tracking_ids: true
+  require_data_deletion: true

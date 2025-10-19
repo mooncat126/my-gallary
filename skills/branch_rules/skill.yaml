@@ -1,0 +1,6 @@
+name: Branch Rules
+description: Enforces consistent branch naming.
+version: 1.0.0
+entry: README.md
+rules:
+  branch_format: "^(feature|fix|hotfix|release)\\/[A-Z]+-\\d+(-[a-z0-9-]+)?$|^release\\/v\\d+\\.\\d+\\.\\d+$"

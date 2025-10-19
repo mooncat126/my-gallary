@@ -1,0 +1,9 @@
+name: Release Rules
+description: Semantic versioning and changelog management.
+version: 1.0.0
+entry: README.md
+enforce:
+  - require_changelog: true
+  - require_tag: true
+rules:
+  semantic_versioning: true

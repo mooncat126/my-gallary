@@ -1,0 +1,12 @@
+name: Accessibility Rules
+description: Makes the app usable for all users.
+version: 1.0.0
+entry: README.md
+enforce:
+  - require_accessibility_labels: true
+  - require_dynamic_type: true
+  - require_voiceover_testing: true
+rules:
+  min_contrast_ratio: 4.5
+  require_accessibility_tests: true
+  support_reduced_motion: true

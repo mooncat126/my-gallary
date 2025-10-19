@@ -1,0 +1,15 @@
+name: Testing Rules
+description: Ensures code quality through automated testing.
+version: 1.0.0
+entry: README.md
+enforce:
+  - require_tests: true
+  - require_passing_tests: true
+rules:
+  min_coverage: 85
+  required_test_frameworks:
+    - jest
+    - detox
+  require_widget_tests: true
+  require_lint_pass: true
+  require_type_check_pass: true

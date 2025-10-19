@@ -1,0 +1,13 @@
+name: Performance Rules
+description: Ensures smooth experience and energy efficiency.
+version: 1.0.0
+entry: README.md
+rules:
+  image_load_time_ms_max: 1000
+  widget_memory_mb_max: 50
+  require_perf_monitoring: true
+  metrics_to_log:
+    - image_load_time
+    - cache_hit_rate
+    - widget_render_time
+    - memory_usage

@@ -1,0 +1,14 @@
+name: i18n Rules
+description: Prepares the app for multilingual support.
+version: 1.0.0
+entry: README.md
+enforce:
+  - require_translations: true
+rules:
+  required_languages:
+    - en
+    - ja
+    - zh
+  recommended_framework: "i18next"
+  default_language: "en"
+  require_date_time_localization: true
