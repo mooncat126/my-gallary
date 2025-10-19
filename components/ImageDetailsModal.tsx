@@ -14,10 +14,10 @@ import { Ionicons } from "@expo/vector-icons";
 import { StatusBar } from "expo-status-bar";
 import ImageWithPlaceholder from "./ImageWithPlaceholder";
 
-// 获取屏幕尺寸
+// Get screen dimensions
 const { width, height } = Dimensions.get("window");
 
-// 定义道具类型
+// Define props type
 interface ImageDetailsModalProps {
   visible: boolean;
   item: {
@@ -44,24 +44,24 @@ const ImageDetailsModal: React.FC<ImageDetailsModalProps> = ({
   onToggleFavorite,
   isFavorite,
 }) => {
-  // 处理空白区域点击关闭模态框
+  // Handle backdrop press to close modal
   const handleBackdropPress = () => {
     onClose();
   };
 
-  // 阻止内容区域点击事件冒泡
+  // Prevent content area click events from bubbling
   const handleContentPress = (e: any) => {
     e.stopPropagation();
   };
 
-  // 处理收藏按钮点击
+  // Handle favorite button click
   const handleFavoritePress = () => {
     if (item) {
       onToggleFavorite(item.id);
     }
   };
 
-  // 如果没有项目，不渲染任何内容
+  // If there is no item, don't render anything
   if (!item) return null;
 
   return (
@@ -85,7 +85,7 @@ const ImageDetailsModal: React.FC<ImageDetailsModalProps> = ({
                 borderColor: colors.border,
               }
             ]}>
-              {/* 关闭按钮 */}
+              {/* Close button */}
               <TouchableOpacity
                 style={styles.closeButton}
                 onPress={onClose}
@@ -99,7 +99,7 @@ const ImageDetailsModal: React.FC<ImageDetailsModalProps> = ({
                 />
               </TouchableOpacity>
 
-              {/* 收藏按钮 */}
+              {/* Favorite button */}
               <TouchableOpacity
                 style={styles.favoriteButton}
                 onPress={handleFavoritePress}
@@ -113,8 +113,11 @@ const ImageDetailsModal: React.FC<ImageDetailsModalProps> = ({
                 />
               </TouchableOpacity>
 
-              <ScrollView showsVerticalScrollIndicator={false}>
-                {/* 图片区域 */}
+              <ScrollView
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={{ paddingTop: 0 }}
+              >
+                {/* Image area */}
                 <View style={styles.imageContainer}>
                   <ImageWithPlaceholder
                     source={{ uri: item.thumb }}
@@ -125,7 +128,7 @@ const ImageDetailsModal: React.FC<ImageDetailsModalProps> = ({
                   />
                 </View>
 
-                {/* 信息区域 */}
+                {/* Information area */}
                 <View style={styles.infoContainer}>
                   <Text style={[styles.title, { color: colors.text }]}>
                     {item.title || "Untitled"}
@@ -181,6 +184,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     borderWidth: 1,
     overflow: "hidden",
+    paddingTop: 0, // Ensure no extra padding at the top
     ...Platform.select({
       ios: {
         shadowColor: "#000",
@@ -207,8 +211,9 @@ const styles = StyleSheet.create({
   },
   imageContainer: {
     width: "100%",
-    height: width * 0.9, // 保持正方形比例
+    height: width * 0.9, // Keep square aspect ratio
     backgroundColor: "transparent",
+    marginTop: -10, // Remove extra space at top
   },
   image: {
     width: "100%",
