@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import { LinearGradient } from "expo-linear-gradient";
 import {
   Animated,
   Easing,
@@ -68,7 +69,10 @@ async function fetchWithTimeout(resource: string, options: any = {}) {
   const controller = new AbortController();
   const id = setTimeout(() => controller.abort(), timeout);
   try {
-    const res = await fetch(resource, { ...options, signal: controller.signal });
+    const res = await fetch(resource, {
+      ...options,
+      signal: controller.signal,
+    });
     clearTimeout(id);
     return res;
   } catch (e) {
@@ -212,12 +216,23 @@ function LoadingOverlay({
     <View
       style={[
         StyleSheet.absoluteFillObject,
-        { backgroundColor: mask, alignItems: "center", justifyContent: "center" },
+        {
+          backgroundColor: mask,
+          alignItems: "center",
+          justifyContent: "center",
+        },
       ]}
     >
       <Animated.View style={{ transform: [{ rotate: spin }] }}>
         <Svg width={56} height={56} viewBox="0 0 64 64">
-          <Circle cx="32" cy="32" r="22" stroke={stroke} strokeWidth="1" fill="none" />
+          <Circle
+            cx="32"
+            cy="32"
+            r="22"
+            stroke={stroke}
+            strokeWidth="1"
+            fill="none"
+          />
           <Path
             d="M32 10 A22 22 0 0 1 52 30"
             stroke={stroke}
@@ -227,7 +242,9 @@ function LoadingOverlay({
           />
         </Svg>
       </Animated.View>
-      <Text style={{ marginTop: 10, color: stroke, opacity: 0.8, fontSize: 12 }}>
+      <Text
+        style={{ marginTop: 10, color: stroke, opacity: 1, fontSize: 20 }}
+      >
         Searching…
       </Text>
     </View>
@@ -253,14 +270,20 @@ export default function App() {
       setLoading(true);
       setErr(null);
       Keyboard.dismiss();
-      const [met, aic] = await Promise.all([fetchFromMet(query, 40), fetchFromAIC(query, 40)]);
+      const [met, aic] = await Promise.all([
+        fetchFromMet(query, 40),
+        fetchFromAIC(query, 40),
+      ]);
       const merged = dedupeByArtistTitle([...met, ...aic]);
       const fuse = new Fuse<Item>(merged, {
         includeScore: true,
         threshold: 0.42,
         ignoreLocation: true,
         minMatchCharLength: 2,
-        keys: [{ name: "artist", weight: 0.7 }, { name: "title", weight: 0.3 }],
+        keys: [
+          { name: "artist", weight: 0.7 },
+          { name: "title", weight: 0.3 },
+        ],
       });
       let ranked = fuse.search(query).map((r) => r.item);
       if (ranked.length < 6) {
@@ -290,9 +313,10 @@ export default function App() {
       <View style={styles.topbar}>
         <View style={styles.brandContainer}>
           <Image
-            source={theme === "dark"
-              ? require('./assets/app-icon-dark.png')
-              : require('./assets/app-icon.png')
+            source={
+              theme === "dark"
+                ? require("./assets/app-icon-dark.png")
+                : require("./assets/app-icon.png")
             }
             style={styles.appIcon}
             resizeMode="contain"
@@ -314,7 +338,12 @@ export default function App() {
 
       {/* 搜索区（浅色纸张微阴影 / 深色纯平） */}
       <View style={[styles.searchWrap, isLight && styles.paperShadow]}>
-        <View style={[styles.searchRow, { borderColor: P.border, backgroundColor: P.panel }]}>
+        <View
+          style={[
+            styles.searchRow,
+            { borderColor: P.border, backgroundColor: P.panel },
+          ]}
+        >
           <TextInput
             style={[styles.input, { color: P.text }]}
             placeholder="输入画家或作品（Monet / 北斋 / Van Gogh）"
@@ -353,11 +382,43 @@ export default function App() {
         </View>
       </View>
 
+      <LinearGradient
+        colors={[
+          theme === "dark" ? "rgba(0,0,0,0.3)" : "rgba(255,255,255,0.8)",
+          theme === "dark" ? "rgba(0,0,0,0)" : "rgba(255,255,255,0)",
+        ]}
+        style={{
+          height: 28, // 控制渐变高度
+          marginHorizontal: 16, // 与搜索框对齐
+          marginBottom: 8, // 与下方内容留空
+          borderRadius: 8,
+        }}
+      />
+
       {err && (
-        <Text style={{ color: P.sub, fontSize: 12, marginHorizontal: 16, marginBottom: 6 }}>
+        <Text
+          style={{
+            color: P.sub,
+            fontSize: 12,
+            marginHorizontal: 16,
+            marginBottom: 6,
+          }}
+        >
           出错了：{err}
         </Text>
       )}
+
+      {/* 没有结果时显示错误图片 */}
+      {!loading && !err && query.trim() && results.length === 0 ? (
+        <View style={styles.noResultsContainer}>
+          <Image
+            source={require('./assets/error.png')}
+            style={styles.errorImage}
+            resizeMode="contain"
+          />
+          <Text style={[styles.noResultsText, { color: P.sub }]}>没有找到相关作品，换个关键词试试～</Text>
+        </View>
+      ) : null}
 
       {/* 结果：浅色纸张微阴影，深色纯平 */}
       <FlatList
@@ -372,7 +433,10 @@ export default function App() {
               style={({ pressed }) => [
                 styles.card,
                 { borderColor: P.border, backgroundColor: P.card },
-                pressed && { transform: [{ scale: 0.995 }], borderColor: P.text },
+                pressed && {
+                  transform: [{ scale: 0.995 }],
+                  borderColor: P.text,
+                },
               ]}
             >
               <Image
@@ -380,14 +444,23 @@ export default function App() {
                 style={[styles.image, { backgroundColor: P.imgPlaceholder }]}
               />
               <View style={styles.meta}>
-                <Text numberOfLines={2} style={[styles.title, { color: P.text }]}>
+                <Text
+                  numberOfLines={2}
+                  style={[styles.title, { color: P.text }]}
+                >
                   {item.title || "Untitled"}
                 </Text>
-                <Text numberOfLines={1} style={[styles.artist, { color: P.sub }]}>
+                <Text
+                  numberOfLines={1}
+                  style={[styles.artist, { color: P.sub }]}
+                >
                   {item.artist || "Unknown"}
                 </Text>
                 {item.dateText ? (
-                  <Text numberOfLines={1} style={{ color: P.hint, fontSize: 11 }}>
+                  <Text
+                    numberOfLines={1}
+                    style={{ color: P.hint, fontSize: 11 }}
+                  >
                     {item.dateText}
                   </Text>
                 ) : null}
@@ -431,7 +504,7 @@ const styles = StyleSheet.create({
   /** 搜索框：外层负责阴影与外距，内层描边与内容 */
   searchWrap: {
     marginHorizontal: 16,
-    marginBottom: 12,
+    marginBottom: 10,
     borderRadius: 12,
   },
   searchRow: {
@@ -478,7 +551,7 @@ const styles = StyleSheet.create({
   },
   image: {
     width: "100%",
-    aspectRatio: 2 / 2,
+    aspectRatio: 2 / 2, // 更竖直，更留白
   },
   meta: {
     paddingHorizontal: 14,
@@ -486,4 +559,22 @@ const styles = StyleSheet.create({
   },
   title: { fontSize: 15, fontWeight: "700", lineHeight: 20 },
   artist: { fontSize: 13, marginTop: 4 },
+
+  // No results display
+  noResultsContainer: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 40,
+  },
+  errorImage: {
+    width: 200,
+    height: 200,
+    marginBottom: 20,
+  },
+  noResultsText: {
+    fontSize: 14,
+    textAlign: "center",
+    marginHorizontal: 20,
+  },
 });
