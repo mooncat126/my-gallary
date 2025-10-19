@@ -1,9 +1,7 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 import MaskedView from "@react-native-masked-view/masked-view";
 import { LinearGradient } from "expo-linear-gradient";
 import {
-  Animated,
-  Easing,
   FlatList,
   Image,
   Keyboard,
@@ -14,15 +12,16 @@ import {
   TextInput,
   View,
   useColorScheme,
-  Alert,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { StatusBar } from "expo-status-bar";
-import Svg, { Path, Rect, Circle } from "react-native-svg";
+import Svg, { Rect } from "react-native-svg";
 import { Ionicons } from "@expo/vector-icons";
 import Fuse from "fuse.js";
 import ImageWithPlaceholder from "./components/ImageWithPlaceholder";
 import ImageDetailsModal from "./components/ImageDetailsModal";
+import ArtStrokeBg from "./components/ArtStrokeBg";
+import LoadingOverlay from "./components/LoadingOverlay";
 
 /** ---------- Theme (Black/White/Gray + Line Style) ---------- */
 const Light = {
@@ -160,95 +159,6 @@ function dedupeByArtistTitle(items: Item[]) {
   return out;
 }
 
-/** ---------- Top Fade Line Background (Optional) ---------- */
-function ArtStrokeBg({ color }: { color: string }) {
-  return (
-    <Svg
-      pointerEvents="none"
-      style={StyleSheet.absoluteFillObject}
-      viewBox="0 0 400 800"
-    >
-      <Path
-        d="M12 72 Q 120 8 198 64 T 384 92"
-        stroke={color}
-        strokeOpacity="0.12"
-        strokeWidth="1"
-        fill="none"
-      />
-      <Path
-        d="M-8 250 Q 90 206 168 260 T 420 320"
-        stroke={color}
-        strokeOpacity="0.1"
-        strokeWidth="1"
-        fill="none"
-      />
-    </Svg>
-  );
-}
-
-/** ---------- Loading Overlay (Line Style Spinner) ---------- */
-function LoadingOverlay({
-  visible,
-  stroke,
-  bg,
-}: {
-  visible: boolean;
-  stroke: string;
-  bg: string;
-}) {
-  const rot = useRef(new Animated.Value(0)).current;
-  useEffect(() => {
-    if (!visible) return;
-    const loop = Animated.loop(
-      Animated.timing(rot, {
-        toValue: 1,
-        duration: 1100,
-        easing: Easing.linear,
-        useNativeDriver: true,
-      })
-    );
-    loop.start();
-    return () => loop.stop();
-  }, [visible]);
-  if (!visible) return null;
-  const spin = rot.interpolate({
-    inputRange: [0, 1],
-    outputRange: ["0deg", "360deg"],
-  });
-  return (
-    <View
-      style={[
-        StyleSheet.absoluteFillObject,
-        { backgroundColor: bg, alignItems: "center", justifyContent: "center" },
-      ]}
-    >
-      <Animated.View style={{ transform: [{ rotate: spin }] }}>
-        <Svg width={56} height={56} viewBox="0 0 64 64">
-          <Circle
-            cx="32"
-            cy="32"
-            r="22"
-            stroke={stroke}
-            strokeWidth="1"
-            fill="none"
-          />
-          <Path
-            d="M32 10 A22 22 0 0 1 52 30"
-            stroke={stroke}
-            strokeWidth="2"
-            fill="none"
-            strokeLinecap="round"
-          />
-        </Svg>
-      </Animated.View>
-      <Text
-        style={{ marginTop: 10, color: stroke, opacity: 0.9, fontSize: 14 }}
-      >
-        Searching…
-      </Text>
-    </View>
-  );
-}
 
 /** =================== App =================== */
 export default function App() {
