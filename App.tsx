@@ -14,14 +14,17 @@ import {
   TextInput,
   View,
   useColorScheme,
+  Alert,
 } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { StatusBar } from "expo-status-bar";
 import Svg, { Path, Rect, Circle } from "react-native-svg";
 import { Ionicons } from "@expo/vector-icons";
 import Fuse from "fuse.js";
 import ImageWithPlaceholder from "./components/ImageWithPlaceholder";
+import ImageDetailsModal from "./components/ImageDetailsModal";
 
-/** ---------- 主题（黑白灰 + 线条风） ---------- */
+/** ---------- Theme (Black/White/Gray + Line Style) ---------- */
 const Light = {
   bg: "#FFFFFF",
   panel: "#FFFFFF",
@@ -45,7 +48,7 @@ const Dark = {
   imgPlaceholder: "#1A1D22",
 };
 
-/** ---------- 数据源 ---------- */
+/** ---------- Data Sources ---------- */
 const MET_SEARCH =
   "https://collectionapi.metmuseum.org/public/collection/v1/search";
 const MET_OBJECT =
@@ -53,7 +56,7 @@ const MET_OBJECT =
 const AIC_SEARCH =
   "https://api.artic.edu/api/v1/artworks/search?fields=id,title,image_id,artist_title,date_display";
 
-/** ---------- 类型 ---------- */
+/** ---------- Types ---------- */
 type Item = {
   id: string; // "met:xxxx" | "aic:xxxx"
   title: string;
@@ -63,7 +66,7 @@ type Item = {
   source: "met" | "aic";
 };
 
-/** ---------- 工具 ---------- */
+/** ---------- Utilities ---------- */
 async function fetchWithTimeout(resource: string, options: any = {}) {
   const { timeout = 15000 } = options;
   const controller = new AbortController();
@@ -137,7 +140,7 @@ async function fetchFromAIC(keyword: string, topN = 30): Promise<Item[]> {
     );
 }
 
-/** ---------- 合并 + 去重（按 artist+title 归一） ---------- */
+/** ---------- Merge + Dedupe (by artist+title normalization) ---------- */
 function norm(s: string) {
   return (s || "")
     .toLowerCase()
@@ -157,7 +160,7 @@ function dedupeByArtistTitle(items: Item[]) {
   return out;
 }
 
-/** ---------- 顶部淡线背景（可选） ---------- */
+/** ---------- Top Fade Line Background (Optional) ---------- */
 function ArtStrokeBg({ color }: { color: string }) {
   return (
     <Svg
@@ -183,7 +186,7 @@ function ArtStrokeBg({ color }: { color: string }) {
   );
 }
 
-/** ---------- Loading 蒙层（可选） ---------- */
+/** ---------- Loading Overlay (Line Style Spinner) ---------- */
 function LoadingOverlay({
   visible,
   stroke,
@@ -260,9 +263,61 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
-  // 用于放置“顶部渐淡遮罩”的位置与高度
-  const [searchEdgeY, setSearchEdgeY] = useState(0);
-  const topFadeHeight = 136; // 顶部淡出高度（越大越明显）
+  // 模态框状态
+  const [modalVisible, setModalVisible] = useState(false);
+  const [selectedItem, setSelectedItem] = useState<Item | null>(null);
+  const [favorites, setFavorites] = useState<Set<string>>(new Set());
+
+  // For placing the "top fade mask" position and height
+  const [searchH, setSearchEdgeY] = useState(0);
+  const topFadeHeight = 136; // Top fade-out height (larger = more visible)
+
+  // Load favorites state
+  useEffect(() => {
+    const loadFavorites = async () => {
+      try {
+        const savedFavorites = await AsyncStorage.getItem('favorites');
+        if (savedFavorites) {
+          setFavorites(new Set(JSON.parse(savedFavorites)));
+        }
+      } catch (error) {
+        console.error('Failed to load favorites', error);
+      }
+    };
+
+    loadFavorites();
+  }, []);
+
+  // Handle favorite/unfavorite
+  const handleToggleFavorite = async (id: string) => {
+    const newFavorites = new Set(favorites);
+
+    if (newFavorites.has(id)) {
+      newFavorites.delete(id);
+    } else {
+      newFavorites.add(id);
+    }
+
+    setFavorites(newFavorites);
+
+    // Save to AsyncStorage
+    try {
+      await AsyncStorage.setItem('favorites', JSON.stringify([...newFavorites]));
+    } catch (error) {
+      console.error('Failed to save favorites', error);
+    }
+  };
+
+  // Open modal
+  const openModal = (item: Item) => {
+    setSelectedItem(item);
+    setModalVisible(true);
+  };
+
+  // Close modal
+  const closeModal = () => {
+    setModalVisible(false);
+  };
 
   async function handleSearch() {
     if (!query.trim() || loading) return;
@@ -298,7 +353,7 @@ export default function App() {
       }
       setResults(ranked.slice(0, 60));
     } catch {
-      setErr("搜索出错");
+      setErr("Search error");
     } finally {
       setLoading(false);
     }
@@ -309,7 +364,7 @@ export default function App() {
       <StatusBar style={theme === "dark" ? "light" : "dark"} />
       <ArtStrokeBg color={P.border} />
 
-      {/* 顶部 */}
+      {/* Header */}
       <View style={styles.topbar}>
         <View style={styles.brandContainer}>
           <Image
@@ -336,7 +391,7 @@ export default function App() {
         </Pressable>
       </View>
 
-      {/* 搜索区 */}
+      {/* Search area (light paper with shadow / dark flat) */}
       <View
         style={[styles.searchWrap, isLight && styles.paperShadow]}
         onLayout={(e) =>
@@ -351,7 +406,7 @@ export default function App() {
         >
           <TextInput
             style={[styles.input, { color: P.text }]}
-            placeholder="输入画家或作品（Monet / Van Gogh）"
+            placeholder="Enter artist or artwork (Monet / Van Gogh)"
             placeholderTextColor={P.hint}
             value={query}
             onChangeText={setQuery}
@@ -387,7 +442,28 @@ export default function App() {
         </View>
       </View>
 
-      {/* 错误提示 */}
+      {/* Fixed scroll fade mask: attached to search area bottom, list scrolling underneath will fade out */}
+      <LinearGradient
+        pointerEvents="none"
+        colors={[
+          theme === "dark" ? "rgba(11,12,14,0.2)" : "rgba(255,255,255,0.2)", // Top close to background
+          theme === "dark" ? "rgba(11,12,14,0.0)" : "rgba(255,255,255,0.0)", // Transparent toward bottom
+        ]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0, y: 1 }}
+        style={{
+          position: "absolute",
+          top: searchH, // Precisely fit to bottom of search area
+          left: 0,
+          right: 0,
+          height: 120, // Fade range
+          zIndex: 20,
+          borderRadius: 10,     // Rounded corners
+          marginHorizontal: 8,  // Horizontal margin
+        }}
+      />
+
+      {/* Error message */}
       {err && (
         <Text
           style={{
@@ -397,25 +473,25 @@ export default function App() {
             marginBottom: 6,
           }}
         >
-          出错了：{err}
+          Error: {err}
         </Text>
       )}
 
-      {/* 无结果时显示错误图片 */}
+      {/* Show error image when no results */}
       {!loading && !err && query.trim() && results.length === 0 ? (
         <View style={styles.noResultsContainer}>
           <Image source={require("./assets/error.png")} style={styles.errorImage} resizeMode="contain" />
-          <Text style={[styles.noResultsText, { color: P.sub }]}>没有找到相关作品，换个关键词试试～</Text>
+          <Text style={[styles.noResultsText, { color: P.sub }]}>No matching artworks found. Try different keywords.</Text>
         </View>
       ) : (
-        /* 结果列表 */
+        /* Results: light paper with shadow, dark flat */
         <MaskedView
           style={{flex: 1}}
           maskElement={
             <LinearGradient
-              // 黑色=完全可见，透明=完全隐藏（只影响 alpha）
+              // Black=fully visible, transparent=fully hidden (affects alpha only)
               colors={["#000", "#000", "rgba(0,0,0,0)"]}
-              locations={[0, 0.92, 1]} // 仅底部 22% 做轻微渐隐
+              locations={[0, 0.92, 1]} // Only bottom 22% has slight fade-out
               start={{ x: 0, y: 1 }}
               end={{ x: 0, y: 0 }}
               style={StyleSheet.absoluteFillObject}
@@ -426,7 +502,7 @@ export default function App() {
           data={results}
           keyExtractor={(it) => it.id}
           numColumns={2}
-          // 顶部 padding 让标题区尽量避开顶层淡出带，基本只影响图片
+          // Slight top padding for smoother scrolling
           contentContainerStyle={{
             paddingTop: 8,
             paddingHorizontal: 10,
@@ -435,7 +511,7 @@ export default function App() {
           renderItem={({ item }) => (
             <View style={[styles.cardWrap, isLight && styles.paperShadow]}>
               <Pressable
-                onPress={() => {}}
+                onPress={() => openModal(item)}
                 style={({ pressed }) => [
                   styles.card,
                   { borderColor: P.border, backgroundColor: P.card },
@@ -449,6 +525,7 @@ export default function App() {
                   source={{ uri: item.thumb }}
                   style={[styles.image, { backgroundColor: P.imgPlaceholder }]}
                   placeholderColor={P.imgPlaceholder}
+                  darkMode={theme === "dark"}
                 />
 
                 <View style={styles.meta}>
@@ -480,7 +557,18 @@ export default function App() {
       </MaskedView>
       )}
 
-      {/* 可选全屏 Loading（搜索时） */}
+      {/* Image Details Modal */}
+      <ImageDetailsModal
+        visible={modalVisible}
+        item={selectedItem}
+        theme={theme}
+        colors={P}
+        onClose={closeModal}
+        onToggleFavorite={handleToggleFavorite}
+        isFavorite={selectedItem ? favorites.has(selectedItem.id) : false}
+      />
+
+      {/* Optional full-screen Loading (during search) */}
       <LoadingOverlay
         visible={loading}
         stroke={P.border}
@@ -543,7 +631,7 @@ const styles = StyleSheet.create({
   },
   card: { flex: 1, borderRadius: 16, borderWidth: 1, overflow: "hidden" },
 
-  // 图片区域：正方形比例；圆角与卡片一致，避免漏角
+  // Image area: square ratio; border radius matches card to avoid corner gaps
   image: {
     width: "100%",
     aspectRatio: 1,
@@ -556,10 +644,10 @@ const styles = StyleSheet.create({
   title: { fontSize: 15, fontWeight: "700", lineHeight: 20 },
   artist: { fontSize: 13, marginTop: 4 },
 
-  // 无结果占位
+  // No results placeholder
   noResultsContainer: {
     position: "absolute",
-    top: 250, // 从顶部向下偏移，让内容在中部
+    top: 250, // Offset from top to center the content
     left: 0,
     right: 0,
     alignItems: "center",
