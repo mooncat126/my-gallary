@@ -87,29 +87,35 @@ const ImageDetailsModal: React.FC<ImageDetailsModalProps> = ({
             ]}>
               {/* Close button */}
               <TouchableOpacity
-                style={styles.closeButton}
+                style={[
+                  styles.closeButton,
+                  { backgroundColor: theme === "dark" ? "rgba(30,30,30,0.85)" : "rgba(255,255,255,0.85)" }
+                ]}
                 onPress={onClose}
                 hitSlop={{ top: 15, right: 15, bottom: 15, left: 15 }}
               >
                 <Ionicons
                   name="close-circle"
-                  size={32}
+                  size={28}
                   color={colors.text}
-                  style={{ opacity: 0.8 }}
+                  style={{ opacity: 0.9 }}
                 />
               </TouchableOpacity>
 
               {/* Favorite button */}
               <TouchableOpacity
-                style={styles.favoriteButton}
+                style={[
+                  styles.favoriteButton,
+                  { backgroundColor: theme === "dark" ? "rgba(30,30,30,0.85)" : "rgba(255,255,255,0.85)" }
+                ]}
                 onPress={handleFavoritePress}
                 hitSlop={{ top: 15, right: 15, bottom: 15, left: 15 }}
               >
                 <Ionicons
                   name={isFavorite ? "heart" : "heart-outline"}
-                  size={32}
+                  size={28}
                   color={isFavorite ? "#f87171" : colors.text}
-                  style={{ opacity: 0.8 }}
+                  style={{ opacity: 0.9 }}
                 />
               </TouchableOpacity>
 
@@ -199,21 +205,44 @@ const styles = StyleSheet.create({
   },
   closeButton: {
     position: "absolute",
-    top: 12,
-    right: 12,
+    top: 16,
+    right: 16,
     zIndex: 10,
+    width: 38,
+    height: 38,
+    backgroundColor: "rgba(255,255,255,0.85)",
+    borderRadius: 19,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
+    elevation: 3,
   },
   favoriteButton: {
     position: "absolute",
-    top: 12,
-    left: 12,
+    top: 16,
+    left: 16,
     zIndex: 10,
+    width: 38,
+    height: 38,
+    backgroundColor: "rgba(255,255,255,0.85)",
+    borderRadius: 19,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
+    elevation: 3,
   },
   imageContainer: {
     width: "100%",
     height: width * 0.9, // Keep square aspect ratio
     backgroundColor: "transparent",
-    marginTop: -10, // Remove extra space at top
+    marginTop: 0, // Changed from -10 to ensure buttons don't overlap with image
+    paddingTop: 10, // Add padding at top for button spacing
   },
   image: {
     width: "100%",
