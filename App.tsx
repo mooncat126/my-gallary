@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import MaskedView from "@react-native-masked-view/masked-view";
 import { LinearGradient } from "expo-linear-gradient";
 import {
   Animated,
@@ -18,6 +19,7 @@ import { StatusBar } from "expo-status-bar";
 import Svg, { Path, Rect, Circle } from "react-native-svg";
 import { Ionicons } from "@expo/vector-icons";
 import Fuse from "fuse.js";
+import ImageWithPlaceholder from "./components/ImageWithPlaceholder";
 
 /** ---------- 主题（黑白灰 + 线条风） ---------- */
 const Light = {
@@ -30,7 +32,6 @@ const Light = {
   hint: "#9AA0A6",
   btnText: "#111417",
   imgPlaceholder: "#F3F4F6",
-  mask: "rgba(255,255,255,0.60)",
 };
 const Dark = {
   bg: "#0B0C0E",
@@ -42,7 +43,6 @@ const Dark = {
   hint: "#7D8694",
   btnText: "#E7E9ED",
   imgPlaceholder: "#1A1D22",
-  mask: "rgba(0,0,0,0.45)",
 };
 
 /** ---------- 数据源 ---------- */
@@ -183,15 +183,15 @@ function ArtStrokeBg({ color }: { color: string }) {
   );
 }
 
-/** ---------- Loading 蒙层（线条风旋转圈） ---------- */
+/** ---------- Loading 蒙层（可选） ---------- */
 function LoadingOverlay({
   visible,
-  mask,
   stroke,
+  bg,
 }: {
   visible: boolean;
-  mask: string;
   stroke: string;
+  bg: string;
 }) {
   const rot = useRef(new Animated.Value(0)).current;
   useEffect(() => {
@@ -216,11 +216,7 @@ function LoadingOverlay({
     <View
       style={[
         StyleSheet.absoluteFillObject,
-        {
-          backgroundColor: mask,
-          alignItems: "center",
-          justifyContent: "center",
-        },
+        { backgroundColor: bg, alignItems: "center", justifyContent: "center" },
       ]}
     >
       <Animated.View style={{ transform: [{ rotate: spin }] }}>
@@ -243,7 +239,7 @@ function LoadingOverlay({
         </Svg>
       </Animated.View>
       <Text
-        style={{ marginTop: 10, color: stroke, opacity: 1, fontSize: 20 }}
+        style={{ marginTop: 10, color: stroke, opacity: 0.9, fontSize: 14 }}
       >
         Searching…
       </Text>
@@ -263,6 +259,10 @@ export default function App() {
   const [results, setResults] = useState<Item[]>([]);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+
+  // 用于放置“顶部渐淡遮罩”的位置与高度
+  const [searchEdgeY, setSearchEdgeY] = useState(0);
+  const topFadeHeight = 136; // 顶部淡出高度（越大越明显）
 
   async function handleSearch() {
     if (!query.trim() || loading) return;
@@ -336,8 +336,13 @@ export default function App() {
         </Pressable>
       </View>
 
-      {/* 搜索区（浅色纸张微阴影 / 深色纯平） */}
-      <View style={[styles.searchWrap, isLight && styles.paperShadow]}>
+      {/* 搜索区 */}
+      <View
+        style={[styles.searchWrap, isLight && styles.paperShadow]}
+        onLayout={(e) =>
+          setSearchEdgeY(e.nativeEvent.layout.y + e.nativeEvent.layout.height)
+        }
+      >
         <View
           style={[
             styles.searchRow,
@@ -346,7 +351,7 @@ export default function App() {
         >
           <TextInput
             style={[styles.input, { color: P.text }]}
-            placeholder="输入画家或作品（Monet / 北斋 / Van Gogh）"
+            placeholder="输入画家或作品（Monet / Van Gogh）"
             placeholderTextColor={P.hint}
             value={query}
             onChangeText={setQuery}
@@ -382,19 +387,7 @@ export default function App() {
         </View>
       </View>
 
-      <LinearGradient
-        colors={[
-          theme === "dark" ? "rgba(0,0,0,0.3)" : "rgba(255,255,255,0.8)",
-          theme === "dark" ? "rgba(0,0,0,0)" : "rgba(255,255,255,0)",
-        ]}
-        style={{
-          height: 28, // 控制渐变高度
-          marginHorizontal: 16, // 与搜索框对齐
-          marginBottom: 8, // 与下方内容留空
-          borderRadius: 8,
-        }}
-      />
-
+      {/* 错误提示 */}
       {err && (
         <Text
           style={{
@@ -408,78 +401,98 @@ export default function App() {
         </Text>
       )}
 
-      {/* 没有结果时显示错误图片 */}
+      {/* 无结果时显示错误图片 */}
       {!loading && !err && query.trim() && results.length === 0 ? (
         <View style={styles.noResultsContainer}>
-          <Image
-            source={require('./assets/error.png')}
-            style={styles.errorImage}
-            resizeMode="contain"
-          />
+          <Image source={require("./assets/error.png")} style={styles.errorImage} resizeMode="contain" />
           <Text style={[styles.noResultsText, { color: P.sub }]}>没有找到相关作品，换个关键词试试～</Text>
         </View>
-      ) : null}
+      ) : (
+        /* 结果列表 */
+        <MaskedView
+          style={{flex: 1}}
+          maskElement={
+            <LinearGradient
+              // 黑色=完全可见，透明=完全隐藏（只影响 alpha）
+              colors={["#000", "#000", "rgba(0,0,0,0)"]}
+              locations={[0, 0.92, 1]} // 仅底部 22% 做轻微渐隐
+              start={{ x: 0, y: 1 }}
+              end={{ x: 0, y: 0 }}
+              style={StyleSheet.absoluteFillObject}
+            />
+          }
+        >
+          <FlatList
+          data={results}
+          keyExtractor={(it) => it.id}
+          numColumns={2}
+          // 顶部 padding 让标题区尽量避开顶层淡出带，基本只影响图片
+          contentContainerStyle={{
+            paddingTop: 8,
+            paddingHorizontal: 10,
+            paddingBottom: 16,
+          }}
+          renderItem={({ item }) => (
+            <View style={[styles.cardWrap, isLight && styles.paperShadow]}>
+              <Pressable
+                onPress={() => {}}
+                style={({ pressed }) => [
+                  styles.card,
+                  { borderColor: P.border, backgroundColor: P.card },
+                  pressed && {
+                    transform: [{ scale: 0.995 }],
+                    borderColor: P.text,
+                  },
+                ]}
+              >
+                <ImageWithPlaceholder
+                  source={{ uri: item.thumb }}
+                  style={[styles.image, { backgroundColor: P.imgPlaceholder }]}
+                  placeholderColor={P.imgPlaceholder}
+                />
 
-      {/* 结果：浅色纸张微阴影，深色纯平 */}
-      <FlatList
-        data={results}
-        keyExtractor={(it) => it.id}
-        numColumns={2}
-        contentContainerStyle={{ padding: 10 }}
-        renderItem={({ item }) => (
-          <View style={[styles.cardWrap, isLight && styles.paperShadow]}>
-            <Pressable
-              onPress={() => {}}
-              style={({ pressed }) => [
-                styles.card,
-                { borderColor: P.border, backgroundColor: P.card },
-                pressed && {
-                  transform: [{ scale: 0.995 }],
-                  borderColor: P.text,
-                },
-              ]}
-            >
-              <Image
-                source={{ uri: item.thumb }}
-                style={[styles.image, { backgroundColor: P.imgPlaceholder }]}
-              />
-              <View style={styles.meta}>
-                <Text
-                  numberOfLines={2}
-                  style={[styles.title, { color: P.text }]}
-                >
-                  {item.title || "Untitled"}
-                </Text>
-                <Text
-                  numberOfLines={1}
-                  style={[styles.artist, { color: P.sub }]}
-                >
-                  {item.artist || "Unknown"}
-                </Text>
-                {item.dateText ? (
+                <View style={styles.meta}>
+                  <Text
+                    numberOfLines={2}
+                    style={[styles.title, { color: P.text }]}
+                  >
+                    {item.title || "Untitled"}
+                  </Text>
                   <Text
                     numberOfLines={1}
-                    style={{ color: P.hint, fontSize: 11 }}
+                    style={[styles.artist, { color: P.sub }]}
                   >
-                    {item.dateText}
+                    {item.artist || "Unknown"}
                   </Text>
-                ) : null}
-              </View>
-            </Pressable>
-          </View>
-        )}
-      />
+                  {item.dateText ? (
+                    <Text
+                      numberOfLines={1}
+                      style={{ color: P.hint, fontSize: 11 }}
+                    >
+                      {item.dateText}
+                    </Text>
+                  ) : null}
+                </View>
+              </Pressable>
+            </View>
+          )}
+        />
+      </MaskedView>
+      )}
 
-      {/* Loading 蒙层 */}
-      <LoadingOverlay visible={loading} mask={P.mask} stroke={P.border} />
+      {/* 可选全屏 Loading（搜索时） */}
+      <LoadingOverlay
+        visible={loading}
+        stroke={P.border}
+        bg={theme === "dark" ? "rgba(0,0,0,0.28)" : "rgba(255,255,255,0.28)"}
+      />
     </SafeAreaView>
   );
 }
 
 /** ---------- 样式 ---------- */
 const styles = StyleSheet.create({
-  root: { flex: 1 },
-
+  root: { flex: 1, position: "relative" },
   topbar: {
     height: 60,
     marginBottom: 10,
@@ -488,24 +501,18 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
   },
-  brandContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  appIcon: {
-    width: 40,
-    height: 40,
-    marginRight: 8,
-    borderRadius: 6,
-  },
+  brandContainer: { flexDirection: "row", alignItems: "center" },
+  appIcon: { width: 40, height: 40, marginRight: 8, borderRadius: 6 },
   brand: { fontSize: 18, fontWeight: "700" },
   themeBtn: { padding: 6, borderRadius: 8 },
 
-  /** 搜索框：外层负责阴影与外距，内层描边与内容 */
-  searchWrap: {
-    marginHorizontal: 16,
-    marginBottom: 10,
-    borderRadius: 12,
+  searchWrap: { marginHorizontal: 16, marginBottom: 16, borderRadius: 12 },
+  paperShadow: {
+    shadowColor: "#000",
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 2,
   },
   searchRow: {
     borderWidth: 1,
@@ -526,55 +533,40 @@ const styles = StyleSheet.create({
   },
   searchBtnText: { position: "absolute", fontSize: 14, fontWeight: "600" },
 
-  /** 卡片：外层负责阴影与外距，内层负责描边和裁剪 **/
   cardWrap: {
     flex: 1,
     marginRight: 5,
     marginLeft: 5,
     marginBottom: 20,
     borderRadius: 16,
+    marginTop: 15,
   },
-  paperShadow: {
-    // iOS 微阴影（纸张）
-    shadowColor: "#000",
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
-    // Android
-    elevation: 2,
-  },
-  card: {
-    flex: 1,
-    borderRadius: 16,
-    borderWidth: 1,
-    overflow: "hidden", // 内层裁剪，避免图片漏角
-  },
+  card: { flex: 1, borderRadius: 16, borderWidth: 1, overflow: "hidden" },
+
+  // 图片区域：正方形比例；圆角与卡片一致，避免漏角
   image: {
     width: "100%",
-    aspectRatio: 2 / 2, // 更竖直，更留白
+    aspectRatio: 1,
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    marginTop: -10,
   },
-  meta: {
-    paddingHorizontal: 14,
-    paddingVertical: 14,
-  },
+
+  meta: { paddingHorizontal: 14, paddingVertical: 14 },
   title: { fontSize: 15, fontWeight: "700", lineHeight: 20 },
   artist: { fontSize: 13, marginTop: 4 },
 
-  // No results display
+  // 无结果占位
   noResultsContainer: {
-    flex: 1,
+    position: "absolute",
+    top: 250, // 从顶部向下偏移，让内容在中部
+    left: 0,
+    right: 0,
     alignItems: "center",
     justifyContent: "center",
     paddingVertical: 40,
+    zIndex: 10
   },
-  errorImage: {
-    width: 200,
-    height: 200,
-    marginBottom: 20,
-  },
-  noResultsText: {
-    fontSize: 14,
-    textAlign: "center",
-    marginHorizontal: 20,
-  },
+  errorImage: { width: 180, height: 180, marginBottom: 24 },
+  noResultsText: { fontSize: 16, textAlign: "center", marginHorizontal: 40, lineHeight: 24 },
 });
