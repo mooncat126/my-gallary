@@ -2,6 +2,9 @@
 
 A React Native app for browsing and favoriting artwork from various art museum APIs.
 
+<img width="500" height="500" alt="ChatGPT_Image_2025年10月20日_01_33_24-removebg-preview" src="https://github.com/user-attachments/assets/bad7c6a0-f6f2-459f-b953-ddaa7697865b" />
+
+
 ## Email Login Implementation
 
 This document outlines the implementation of email-based login functionality in the MyGallery app.
