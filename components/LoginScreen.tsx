@@ -4,16 +4,15 @@ import {
   Text,
   TextInput,
   StyleSheet,
-  TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
   Image,
-  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { loginWithEmail, createUserAccount } from "../firebase";
 import ArtStrokeBg from "./ArtStrokeBg";
+import CustomButton from "./CustomButton";
 
 interface LoginScreenProps {
   theme: "light" | "dark";
@@ -172,31 +171,26 @@ const LoginScreen: React.FC<LoginScreenProps> = ({
             ) : null}
 
             {/* Login Button */}
-            <TouchableOpacity
-              style={[styles.button, { borderColor: colors.border }]}
+            <CustomButton
+              title={isSignUp ? "Sign Up" : "Login"}
               onPress={isSignUp ? handleSignUp : handleLogin}
-              disabled={loading}
-            >
-              {loading ? (
-                <ActivityIndicator color={colors.text} />
-              ) : (
-                <Text style={[styles.buttonText, { color: colors.text }]}>
-                  {isSignUp ? "Sign Up" : "Login"}
-                </Text>
-              )}
-            </TouchableOpacity>
+              loading={loading}
+              borderColor={colors.border}
+              textColor={colors.text}
+              style={styles.button}
+              textStyle={styles.buttonText}
+            />
 
             {/* Toggle Sign Up / Login */}
-            <TouchableOpacity
-              style={styles.toggleButton}
+            <CustomButton
+              title={isSignUp
+                ? "Already have an account? Login"
+                : "Don't have an account? Sign Up"}
               onPress={toggleAuthMode}
-            >
-              <Text style={[styles.toggleText, { color: colors.sub }]}>
-                {isSignUp
-                  ? "Already have an account? Login"
-                  : "Don't have an account? Sign Up"}
-              </Text>
-            </TouchableOpacity>
+              style={styles.toggleButton}
+              textStyle={styles.toggleText}
+              textColor={colors.sub}
+            />
           </View>
         </View>
       </KeyboardAvoidingView>

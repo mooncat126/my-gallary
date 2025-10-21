@@ -4,7 +4,6 @@ import {
   View,
   Text,
   StyleSheet,
-  TouchableOpacity,
   TouchableWithoutFeedback,
   Dimensions,
   Platform,
@@ -13,6 +12,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { StatusBar } from "expo-status-bar";
 import ImageWithPlaceholder from "./ImageWithPlaceholder";
+import CustomButton from "./CustomButton";
 
 const { width, height } = Dimensions.get("window");
 
@@ -48,7 +48,12 @@ const ImageDetailsModal: React.FC<ImageDetailsModalProps> = ({
     theme === "dark" ? "rgba(30,30,30,0.85)" : "rgba(255,255,255,0.92)";
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      onRequestClose={onClose}
+    >
       <StatusBar style={theme === "dark" ? "light" : "dark"} />
       <TouchableWithoutFeedback onPress={onClose}>
         <View
@@ -56,7 +61,7 @@ const ImageDetailsModal: React.FC<ImageDetailsModalProps> = ({
             styles.container,
             {
               backgroundColor:
-                theme === "dark" ? "rgba(0,0,0,0.9)" : "rgba(255,255,255,0.9)",
+                theme === "dark" ? "rgba(0,0,0,0.35)" : "rgba(0,0,0,0.5)",
             },
           ]}
         >
@@ -78,25 +83,25 @@ const ImageDetailsModal: React.FC<ImageDetailsModalProps> = ({
                   },
                 ]}
               >
-                <TouchableOpacity
-                  style={styles.iconBtn}
+                <CustomButton
                   onPress={() => onToggleFavorite(item.id)}
-                  hitSlop={{ top: 10, right: 10, bottom: 10, left: 10 }}
+                  style={styles.iconBtn}
+                  borderColor="transparent"
                 >
                   <Ionicons
                     name={isFavorite ? "heart" : "heart-outline"}
                     size={22}
                     color={isFavorite ? "#f87171" : colors.text}
                   />
-                </TouchableOpacity>
+                </CustomButton>
 
-                <TouchableOpacity
-                  style={styles.iconBtn}
+                <CustomButton
                   onPress={onClose}
-                  hitSlop={{ top: 10, right: 10, bottom: 10, left: 10 }}
+                  style={styles.iconBtn}
+                  borderColor="transparent"
                 >
                   <Ionicons name="close" size={22} color={colors.text} />
-                </TouchableOpacity>
+                </CustomButton>
               </View>
 
               <ScrollView showsVerticalScrollIndicator={false}>

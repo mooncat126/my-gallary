@@ -12,6 +12,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../context/AuthContext";
 import EditProfileForm from "./EditProfileForm";
 import FavoritesScreen from "./FavoritesScreen";
+import CustomButton from "./CustomButton";
 
 interface AccountDetailsScreenProps {
   theme: "light" | "dark";
@@ -130,13 +131,11 @@ const AccountDetailsScreen: React.FC<AccountDetailsScreenProps> = ({
             {user ? user.email : "未登录"}
           </Text>
 
-          <TouchableOpacity
-            style={[styles.editButton, { borderColor: colors.border }]}
+          <CustomButton
+            title="编辑资料"
             onPress={() => setShowEditForm(true)}
-          >
-            <Ionicons name="pencil-outline" size={16} color={"#FFFFFF"} />
-            <Text style={styles.editButtonText}>编辑资料</Text>
-          </TouchableOpacity>
+            borderColor={colors.border}
+          />
         </View>
 
         <View
@@ -250,25 +249,6 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   emailText: { fontSize: 18, fontWeight: "600", textAlign: "center" },
-
-  editButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderWidth: 1,
-    borderRadius: 25,
-    marginTop: 24,
-    backgroundColor: "#2563EB",
-    borderColor: "#2563EB",
-  },
-  editButtonText: {
-    fontSize: 16,
-    fontWeight: "600",
-    marginLeft: 8,
-    color: "#FFFFFF",
-  },
 
   infoSection: {
     borderRadius: 16,

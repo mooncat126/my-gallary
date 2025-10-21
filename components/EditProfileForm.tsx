@@ -4,8 +4,6 @@ import {
   Text,
   StyleSheet,
   TextInput,
-  TouchableOpacity,
-  ActivityIndicator,
   Image,
   Alert,
   ScrollView,
@@ -13,6 +11,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 // 模拟图片选择器，解决原生模块问题
 import { useAuth } from '../context/AuthContext';
+import CustomButton from './CustomButton';
 
 interface EditProfileFormProps {
   theme: 'light' | 'dark';
@@ -137,21 +136,7 @@ const EditProfileForm: React.FC<EditProfileFormProps> = ({
 
       {/* 头像选择 */}
       <View style={styles.avatarContainer}>
-        <TouchableOpacity
-          activeOpacity={0.6}
-          onPress={() => {
-            console.log('头像点击事件');
-            Alert.alert(
-              '选择头像',
-              '您想要更换头像吗？',
-              [
-                { text: '取消', style: 'cancel' },
-                { text: '确定', onPress: pickImage }
-              ]
-            );
-          }}
-          style={styles.avatarTouchable}
-        >
+        <View style={styles.avatarTouchable}>
           {photoURL ? (
             <Image source={{ uri: photoURL }} style={styles.avatarImage} />
           ) : (
@@ -161,19 +146,13 @@ const EditProfileForm: React.FC<EditProfileFormProps> = ({
               </Text>
             </View>
           )}
-          {/* <View style={styles.avatarOverlay}>
-            <Ionicons name="camera" size={16} color="#FFFFFF" />
-            <Text style={{color: '#FFFFFF', fontSize: 12, marginTop: 2}}>点击更换</Text>
-          </View> */}
-        </TouchableOpacity>
+        </View>
 
-        <TouchableOpacity
-          style={[styles.changePhotoButton, { backgroundColor: colors.card }]}
+        <CustomButton
+          title="选择头像"
           onPress={pickImage}
-        >
-          <Ionicons name="camera" size={20} color={colors.text} />
-          <Text style={[styles.changePhotoText, { color: colors.text }]}>选择头像</Text>
-        </TouchableOpacity>
+          style={{...styles.button, marginTop: 16, width: '50%'}}
+        />
       </View>
 
       {/* 表单字段 */}
@@ -210,29 +189,25 @@ const EditProfileForm: React.FC<EditProfileFormProps> = ({
 
       {/* 按钮 */}
       <View style={styles.buttonsContainer}>
-        <TouchableOpacity
-          style={[styles.button, styles.cancelButton, { borderColor: colors.border }]}
+        <CustomButton
+          title="取消"
           onPress={onClose}
           disabled={isLoading}
-        >
-          <Text style={[styles.buttonText, { color: colors.text }]}>取消</Text>
-        </TouchableOpacity>
+          style={{...styles.button, ...styles.cancelButton}}
+          borderColor={colors.border}
+          textColor={colors.text}
+          textStyle={styles.buttonText}
+        />
 
-        <TouchableOpacity
-          style={[
-            styles.button,
-            styles.saveButton,
-            { backgroundColor: isLoading ? colors.hint : '#2563EB' }
-          ]}
+        <CustomButton
+          title="保存"
           onPress={handleSubmit}
-          disabled={isLoading}
-        >
-          {isLoading ? (
-            <ActivityIndicator size="small" color="#FFFFFF" />
-          ) : (
-            <Text style={[styles.buttonText, styles.saveButtonText]}>保存</Text>
-          )}
-        </TouchableOpacity>
+          loading={isLoading}
+          style={{...styles.button, ...styles.saveButton, backgroundColor: isLoading ? colors.hint : '#2563EB'}}
+          borderColor="transparent"
+          textColor="#FFFFFF"
+          textStyle={styles.buttonText}
+        />
       </View>
     </ScrollView>
   );
@@ -289,23 +264,7 @@ const styles = StyleSheet.create({
     fontSize: 48,
     fontWeight: '600',
   },
-  changePhotoButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 12,
-    padding: 10,
-    borderRadius: 20,
-    paddingHorizontal: 16,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.2,
-    shadowRadius: 1.5,
-  },
-  changePhotoText: {
-    marginLeft: 8,
-    fontSize: 16,
-  },
+  // Removed changePhotoButton and changePhotoText styles as we're using CustomButton now
   formSection: {
     marginBottom: 24,
   },
@@ -345,7 +304,6 @@ const styles = StyleSheet.create({
   button: {
     flex: 1,
     height: 50,
-    borderRadius: 25,
     justifyContent: 'center',
     alignItems: 'center',
   },
