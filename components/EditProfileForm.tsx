@@ -189,12 +189,32 @@ const EditProfileForm: React.FC<EditProfileFormProps> = ({
             </View>
 
             <View style={styles.modalBody}>
-              {selectedAvatar && (
-                <View style={styles.previewContainer}>
-                  <Text style={[styles.previewText, {color: colors.sub}]}>预览</Text>
-                  <Image source={{uri: selectedAvatar}} style={styles.previewImage} />
-                </View>
-              )}
+              <View style={styles.previewContainer}>
+                <Text style={[styles.previewText, {color: colors.sub}]}>预览</Text>
+                <ScrollView
+                  horizontal={true}
+                  showsHorizontalScrollIndicator={true}
+                  style={styles.previewScroll}
+                  contentContainerStyle={styles.previewScrollContent}
+                >
+                  {/* 显示当前选择的图片 */}
+                  <Image
+                    source={{uri: selectedAvatar || DEFAULT_AVATARS[0]}}
+                    style={styles.previewImage}
+                  />
+                  {/* 添加额外的图片以演示滚动效果 */}
+                  <View style={styles.previewSpacer} />
+                  <Image
+                    source={{uri: DEFAULT_AVATARS[1]}}
+                    style={[styles.previewImage, {opacity: 0.7}]}
+                  />
+                  <View style={styles.previewSpacer} />
+                  <Image
+                    source={{uri: DEFAULT_AVATARS[2]}}
+                    style={[styles.previewImage, {opacity: 0.5}]}
+                  />
+                </ScrollView>
+              </View>
 
               <Text style={[styles.sectionTitle, {color: colors.text}]}>默认头像</Text>
               <FlatList
@@ -465,6 +485,24 @@ const styles = StyleSheet.create({
   previewText: {
     fontSize: 14,
     marginBottom: 8,
+  },
+  previewScroll: {
+    width: '100%',
+    height: 120,
+    marginVertical: 4,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    backgroundColor: '#FAFAFA',
+  },
+  previewScrollContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+  },
+  previewSpacer: {
+    width: 20, // 图片之间的间距
   },
   previewImage: {
     width: 100,
