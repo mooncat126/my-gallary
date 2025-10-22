@@ -134,7 +134,10 @@ const AccountDetailsScreen: React.FC<AccountDetailsScreenProps> = ({
           <CustomButton
             title="编辑资料"
             onPress={() => setShowEditForm(true)}
-            borderColor={colors.border}
+            theme={theme}
+            colors={colors}
+            variant="default"
+            style={{width: 150, marginTop: 20}}
           />
         </View>
 

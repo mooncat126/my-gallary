@@ -16,6 +16,7 @@ import {
   View,
   useColorScheme,
 } from "react-native";
+import Message from "./components/Message";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import Svg, { Rect } from "react-native-svg";
@@ -580,21 +581,15 @@ function AppContent() {
         )}
 
         {/* 错误提示 */}
-        {err && (
-          <View style={{ padding: 16, marginTop: 10 }}>
-            <Text
-              style={{
-                color: '#ff3b30',
-                fontSize: 14,
-                marginBottom: 6,
-                textAlign: 'center',
-                fontWeight: '500'
-              }}
-            >
-              {err}
-            </Text>
-          </View>
-        )}
+        <Message
+          type="error"
+          message={err || ''}
+          visible={!!err}
+          onClose={() => setErr(null)}
+          theme={theme}
+          colors={P}
+          style={{ marginHorizontal: 16, marginTop: 10 }}
+        />
 
         {/* 无结果占位：仅当执行过搜索、有搜索词且无结果时显示 */}
         {!loading && query.trim() && results.length === 0 && searchPerformed ? (

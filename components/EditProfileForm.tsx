@@ -18,6 +18,7 @@ import { Ionicons } from '@expo/vector-icons';
 // 模拟图片选择器，解决原生模块问题
 import { useAuth } from '../context/AuthContext';
 import CustomButton from './CustomButton';
+import Message from './Message';
 
 interface EditProfileFormProps {
   theme: 'light' | 'dark';
@@ -56,6 +57,7 @@ const EditProfileForm: React.FC<EditProfileFormProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [avatarSuccess, setAvatarSuccess] = useState(false);
 
   // Avatar selection modal state
   const [avatarModalVisible, setAvatarModalVisible] = useState(false);
@@ -79,9 +81,10 @@ const EditProfileForm: React.FC<EditProfileFormProps> = ({
       setAvatarModalVisible(false);
 
       // 显示成功提示
+      setAvatarSuccess(true);
       setTimeout(() => {
-        Alert.alert('成功', '头像已更新');
-      }, 300);
+        setAvatarSuccess(false);
+      }, 3000);
     }
   };
 
@@ -144,6 +147,35 @@ const EditProfileForm: React.FC<EditProfileFormProps> = ({
 
   return (
     <ScrollView style={styles.container}>
+      {/* 消息显示区域 */}
+      <View style={[styles.messagesContainer, { marginTop: 8 }]}>
+        <Message
+          type="success"
+          message="头像已更新"
+          visible={avatarSuccess}
+          onClose={() => setAvatarSuccess(false)}
+          theme={theme}
+          colors={colors}
+          style={{marginBottom: 8, marginTop: -20}}
+        />
+        <Message
+          type="success"
+          message="个人资料更新成功！"
+          visible={isSuccess}
+          theme={theme}
+          colors={colors}
+          style={{marginBottom: 8,  marginTop: -20}}
+        />
+        <Message
+          type="error"
+          message={error || ''}
+          visible={!!error}
+          onClose={() => setError(null)}
+          theme={theme}
+          colors={colors}
+        />
+      </View>
+
       <View style={styles.header}>
         <Text style={[styles.title, { color: colors.text }]}>编辑个人资料</Text>
       </View>
@@ -165,7 +197,9 @@ const EditProfileForm: React.FC<EditProfileFormProps> = ({
         <CustomButton
           title="选择头像"
           onPress={pickImage}
-          style={{...styles.button, marginTop: 16, width: '50%'}}
+          style={{marginTop: 16, width: '50%'}}
+          theme={theme}
+          colors={colors}
         />
       </View>
 
@@ -191,38 +225,24 @@ const EditProfileForm: React.FC<EditProfileFormProps> = ({
             <View style={styles.modalBody}>
               <View style={styles.previewContainer}>
                 <Text style={[styles.previewText, {color: colors.sub}]}>预览</Text>
-                <ScrollView
-                  horizontal={true}
-                  showsHorizontalScrollIndicator={true}
-                  style={styles.previewScroll}
-                  contentContainerStyle={styles.previewScrollContent}
-                >
-                  {/* 显示当前选择的图片 */}
+                <View style={styles.previewImageContainer}>
                   <Image
                     source={{uri: selectedAvatar || DEFAULT_AVATARS[0]}}
                     style={styles.previewImage}
                   />
-                  {/* 添加额外的图片以演示滚动效果 */}
-                  <View style={styles.previewSpacer} />
-                  <Image
-                    source={{uri: DEFAULT_AVATARS[1]}}
-                    style={[styles.previewImage, {opacity: 0.7}]}
-                  />
-                  <View style={styles.previewSpacer} />
-                  <Image
-                    source={{uri: DEFAULT_AVATARS[2]}}
-                    style={[styles.previewImage, {opacity: 0.5}]}
-                  />
-                </ScrollView>
+                </View>
               </View>
 
               <Text style={[styles.sectionTitle, {color: colors.text}]}>默认头像</Text>
-              <FlatList
-                data={DEFAULT_AVATARS}
-                keyExtractor={(item) => item}
-                numColumns={4}
-                renderItem={({item}) => (
+              <ScrollView
+                horizontal={true}
+                showsHorizontalScrollIndicator={true}
+                style={styles.avatarsScrollView}
+                contentContainerStyle={styles.avatarsScrollContent}
+              >
+                {DEFAULT_AVATARS.map((item) => (
                   <TouchableOpacity
+                    key={item}
                     style={[
                       styles.avatarOption,
                       selectedAvatar === item && styles.selectedAvatarOption,
@@ -232,19 +252,16 @@ const EditProfileForm: React.FC<EditProfileFormProps> = ({
                   >
                     <Image source={{uri: item}} style={styles.avatarOptionImage} />
                   </TouchableOpacity>
-                )}
-                contentContainerStyle={styles.avatarGrid}
-              />
+                ))}
+              </ScrollView>
 
               <View style={styles.uploadSection}>
                 <Text style={[styles.sectionTitle, {color: colors.text}]}>或者上传本地图片</Text>
                 <CustomButton
                   title="选择本地图片"
                   onPress={handleLocalImageUpload}
-                  style={styles.uploadButton}
-                  borderColor={colors.border}
-                  textColor={colors.text}
-                  textStyle={styles.uploadButtonText}
+                  theme={theme}
+                  colors={colors}
                 />
               </View>
             </View>
@@ -253,16 +270,18 @@ const EditProfileForm: React.FC<EditProfileFormProps> = ({
               <CustomButton
                 title="取消"
                 onPress={() => setAvatarModalVisible(false)}
-                style={{...styles.button, ...styles.cancelButton, marginRight: 10}}
-                borderColor={colors.border}
-                textColor={colors.text}
+                style={{flex: 1, marginRight: 10}}
+                variant="cancel"
+                theme={theme}
+                colors={colors}
               />
               <CustomButton
                 title="确认"
                 onPress={confirmAvatarSelection}
-                style={{...styles.button, ...styles.saveButton, backgroundColor: '#2563EB'}}
-                borderColor="transparent"
-                textColor="#FFFFFF"
+                style={{flex: 1}}
+                variant="primary"
+                theme={theme}
+                colors={colors}
                 disabled={!selectedAvatar}
               />
             </View>
@@ -298,8 +317,7 @@ const EditProfileForm: React.FC<EditProfileFormProps> = ({
           />
         </View>
 
-        {error && <Text style={styles.errorText}>{error}</Text>}
-        {isSuccess && <Text style={styles.successText}>个人资料更新成功！</Text>}
+        {/* 消息已移动到页面顶部 */}
       </View>
 
       {/* 按钮 */}
@@ -308,9 +326,10 @@ const EditProfileForm: React.FC<EditProfileFormProps> = ({
           title="取消"
           onPress={onClose}
           disabled={isLoading}
-          style={{...styles.button, ...styles.cancelButton}}
-          borderColor={colors.border}
-          textColor={colors.text}
+          style={{flex: 1, height: 50, marginRight: 8}}
+          variant="cancel"
+          theme={theme}
+          colors={colors}
           textStyle={styles.buttonText}
         />
 
@@ -318,9 +337,10 @@ const EditProfileForm: React.FC<EditProfileFormProps> = ({
           title="保存"
           onPress={handleSubmit}
           loading={isLoading}
-          style={{...styles.button, ...styles.saveButton, backgroundColor: isLoading ? colors.hint : '#2563EB'}}
-          borderColor="transparent"
-          textColor="#FFFFFF"
+          style={{flex: 1, height: 50, marginLeft: 8}}
+          variant="primary"
+          theme={theme}
+          colors={colors}
           textStyle={styles.buttonText}
         />
       </View>
@@ -332,6 +352,10 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 16,
+  },
+  messagesContainer: {
+    marginBottom: 16,
+    paddingHorizontal: 4,
   },
   header: {
     marginBottom: 24,
@@ -486,36 +510,35 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginBottom: 8,
   },
-  previewScroll: {
-    width: '100%',
-    height: 120,
-    marginVertical: 4,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    backgroundColor: '#FAFAFA',
-  },
-  previewScrollContent: {
-    flexDirection: 'row',
+  previewImageContainer: {
+    marginVertical: 10,
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-  },
-  previewSpacer: {
-    width: 20, // 图片之间的间距
+    justifyContent: 'center',
   },
   previewImage: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    borderWidth: 2,
+    borderColor: '#E5E7EB',
   },
   sectionTitle: {
     fontSize: 16,
     fontWeight: '600',
     marginBottom: 12,
   },
-  avatarGrid: {
-    paddingVertical: 8,
+  avatarsScrollView: {
+    height: 110,
+    marginVertical: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  avatarsScrollContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
   },
   avatarOption: {
     width: AVATAR_SIZE,
@@ -552,6 +575,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     padding: 16,
     borderTopWidth: StyleSheet.hairlineWidth,
+    justifyContent: 'space-between',
   },
 });
 

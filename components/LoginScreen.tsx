@@ -13,6 +13,7 @@ import { StatusBar } from "expo-status-bar";
 import { loginWithEmail, createUserAccount } from "../firebase";
 import ArtStrokeBg from "./ArtStrokeBg";
 import CustomButton from "./CustomButton";
+import Message from "./Message";
 
 interface LoginScreenProps {
   theme: "light" | "dark";
@@ -166,19 +167,26 @@ const LoginScreen: React.FC<LoginScreenProps> = ({
             </View>
 
             {/* Error Message */}
-            {errorMessage ? (
-              <Text style={styles.errorText}>{errorMessage}</Text>
-            ) : null}
+            <Message
+              type="error"
+              message={errorMessage || ''}
+              visible={!!errorMessage}
+              onClose={() => setErrorMessage(null)}
+              theme={theme}
+              colors={colors}
+              style={{ marginTop: 10, marginBottom: 0 }}
+            />
 
             {/* Login Button */}
             <CustomButton
               title={isSignUp ? "Sign Up" : "Login"}
               onPress={isSignUp ? handleSignUp : handleLogin}
               loading={loading}
-              borderColor={colors.border}
-              textColor={colors.text}
               style={styles.button}
               textStyle={styles.buttonText}
+              theme={theme}
+              colors={colors}
+              variant="default"
             />
 
             {/* Toggle Sign Up / Login */}
@@ -189,7 +197,8 @@ const LoginScreen: React.FC<LoginScreenProps> = ({
               onPress={toggleAuthMode}
               style={styles.toggleButton}
               textStyle={styles.toggleText}
-              textColor={colors.sub}
+              theme={theme}
+              colors={colors}
             />
           </View>
         </View>
