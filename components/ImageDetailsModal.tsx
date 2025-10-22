@@ -87,6 +87,7 @@ const ImageDetailsModal: React.FC<ImageDetailsModalProps> = ({
                   onPress={() => onToggleFavorite(item.id)}
                   style={styles.iconBtn}
                   borderColor="transparent"
+                  isIcon={true}
                 >
                   <Ionicons
                     name={isFavorite ? "heart" : "heart-outline"}
@@ -99,6 +100,7 @@ const ImageDetailsModal: React.FC<ImageDetailsModalProps> = ({
                   onPress={onClose}
                   style={styles.iconBtn}
                   borderColor="transparent"
+                  isIcon={true}
                 >
                   <Ionicons name="close" size={22} color={colors.text} />
                 </CustomButton>

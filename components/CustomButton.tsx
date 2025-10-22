@@ -11,6 +11,7 @@ interface CustomButtonProps {
   children?: ReactNode;
   textColor?: string;
   borderColor?: string;
+  isIcon?: boolean; // 添加isIcon属性，用于区分是否为图标按钮
 }
 
 const CustomButton = ({
@@ -22,12 +23,13 @@ const CustomButton = ({
   textStyle,
   children,
   textColor = '#000',
-  borderColor = '#ddd'
+  borderColor = '#ddd',
+  isIcon = false
 }: CustomButtonProps) => {
   return (
     <TouchableOpacity
       style={[
-        styles.button,
+        isIcon ? styles.iconButton : styles.button,
         { borderColor: borderColor },
         style
       ]}
@@ -56,6 +58,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginVertical: 10,
+  },
+  // 图标按钮的样式，移除一些会影响布局的属性
+  iconButton: {
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    // 移除width, padding和margin，让外部style完全控制
   },
   buttonText: {
     fontSize: 16,
