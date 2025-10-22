@@ -3,6 +3,9 @@
     "name": "my-gallary",
     "slug": "my-gallary",
     "version": "1.0.0",
+    "extra": {
+      "EXPO_PUBLIC_API_BASE": "http://localhost:3000"
+    },
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",

@@ -7,28 +7,24 @@ interface ArtStrokeBgProps {
 }
 
 /**
- * Top Fade Line Background (Optional)
- * Decorative SVG background with curved strokes
+ * Decorative SVG background with a single line at the top
  */
 const ArtStrokeBg: React.FC<ArtStrokeBgProps> = ({ color }) => {
   return (
     <Svg
       pointerEvents="none"
-      style={StyleSheet.absoluteFillObject}
-      viewBox="0 0 400 800"
+      style={[
+        StyleSheet.absoluteFillObject,
+        { height: 100, top: 0 } // Position at the top, with limited height
+      ]}
+      viewBox="0 0 400 100"
     >
+      {/* Single wavy line at the top */}
       <Path
-        d="M12 72 Q 120 8 198 64 T 384 92"
+        d="M0 60 Q 100 20 200 60 T 400 60"
         stroke={color}
-        strokeOpacity="0.12"
-        strokeWidth="1"
-        fill="none"
-      />
-      <Path
-        d="M-8 250 Q 90 206 168 260 T 420 320"
-        stroke={color}
-        strokeOpacity="0.1"
-        strokeWidth="1"
+        strokeOpacity="0.2"
+        strokeWidth="1.5"
         fill="none"
       />
     </Svg>

@@ -1,5 +1,8 @@
 // App.tsx
 import React, { useEffect, useState } from "react";
+
+// BFF base URL
+const BFF = process.env.EXPO_PUBLIC_API_BASE?.replace(/\/+$/,"") || "http://localhost:3000";
 import MaskedView from "@react-native-masked-view/masked-view";
 import { LinearGradient } from "expo-linear-gradient";
 import {
@@ -53,12 +56,13 @@ const Dark = {
 };
 
 /** ---------- Data Sources ---------- */
-const MET_SEARCH =
-  "https://collectionapi.metmuseum.org/public/collection/v1/search";
-const MET_OBJECT =
-  "https://collectionapi.metmuseum.org/public/collection/v1/objects/";
-const AIC_SEARCH =
-  "https://api.artic.edu/api/v1/artworks/search?fields=id,title,image_id,artist_title,date_display";
+// Original API endpoints (kept for reference)
+// const MET_SEARCH =
+//   "https://collectionapi.metmuseum.org/public/collection/v1/search";
+// const MET_OBJECT =
+//   "https://collectionapi.metmuseum.org/public/collection/v1/objects/";
+// const AIC_SEARCH =
+//   "https://api.artic.edu/api/v1/artworks/search?fields=id,title,image_id,artist_title,date_display";
 
 /** ---------- Types ---------- */
 type Item = {
@@ -88,6 +92,32 @@ async function fetchWithTimeout(resource: string, options: any = {}) {
   }
 }
 
+// ✅ 新增：从 BFF 搜索
+async function fetchSearchFromBff(keyword: string): Promise<Item[]> {
+  if (!keyword.trim()) return [];
+  try {
+    const res = await fetch(`${BFF}/api/search?q=${encodeURIComponent(keyword)}`, { method: "GET" });
+    if (!res.ok) {
+      throw new Error(`API 服务器返回错误: ${res.status} ${res.statusText}`);
+    }
+    const json = await res.json();
+    return Array.isArray(json?.items) ? json.items : [];
+  } catch (error) {
+    console.error("搜索请求失败:", error);
+    throw new Error("无法连接到搜索服务，请确保 BFF 服务器已运行");
+  }
+}
+
+// ✅ 新增：从 BFF 获取今日推荐
+async function fetchTodayPickFromBff(): Promise<Item | null> {
+  const res = await fetch(`${BFF}/api/today`, { method: "GET" });
+  if (!res.ok) return null;
+  const json = await res.json();
+  return json?.item ?? null;
+}
+
+// 原始 API 函数保留注释，以便参考
+/*
 async function fetchFromMet(keyword: string, topN = 30): Promise<Item[]> {
   const u = `${MET_SEARCH}?hasImages=true&artistOrCulture=true&q=${encodeURIComponent(
     keyword
@@ -143,6 +173,7 @@ async function fetchFromAIC(keyword: string, topN = 30): Promise<Item[]> {
       })
     );
 }
+*/
 
 /** ---------- Merge + Dedupe (by artist+title normalization) ---------- */
 function norm(s: string) {
@@ -182,6 +213,7 @@ function AppContent() {
   const [results, setResults] = useState<Item[]>([]);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [searchPerformed, setSearchPerformed] = useState(false); // 标记是否已执行搜索
 
   // 模态框状态
   const [modalVisible, setModalVisible] = useState(false);
@@ -189,9 +221,6 @@ function AppContent() {
 
   // Use auth context
   const { user, favorites, toggleFavorite } = useAuth();
-
-  // For placing the "top fade mask" position and height
-  const [searchH, setSearchEdgeY] = useState(0);
 
   // 今日推荐 state
   const [todayPick, setTodayPick] = useState<Item | null>(null);
@@ -214,28 +243,31 @@ function AppContent() {
     "Turner",
   ];
 
-  // 获取今日推荐（随机1幅）
-  async function fetchTodayPick(retry = 3) {
+  function handleQueryChange(v: string) {
+    setQuery(v);
+    const trimmed = v.trim();
+    // Reset search state when input is cleared
+    if (trimmed.length === 0) {
+      // 输入为空时清空列表和错误
+      setResults([]);
+      setErr(null);
+      setSearchPerformed(false); // 重置搜索状态
+    }
+  }
+
+  // 获取今日推荐（从BFF获取）
+  async function fetchTodayPick() {
     try {
       setPickLoading(true);
       setPickErr(null);
       setTodayPick(null);
 
-      for (let i = 0; i < retry; i++) {
-        const kw =
-          POPULAR_KEYWORDS[Math.floor(Math.random() * POPULAR_KEYWORDS.length)];
-        const [met, aic] = await Promise.all([
-          fetchFromMet(kw, 50),
-          fetchFromAIC(kw, 50),
-        ]);
-        const merged = dedupeByArtistTitle([...met, ...aic]);
-        if (merged.length) {
-          const pick = merged[Math.floor(Math.random() * merged.length)];
-          setTodayPick(pick);
-          return;
-        }
+      const pick = await fetchTodayPickFromBff();
+      if (!pick) {
+        setPickErr("获取推荐失败，请稍后重试");
+        return;
       }
-      setPickErr("获取推荐失败，请稍后重试");
+      setTodayPick(pick);
     } catch {
       setPickErr("获取推荐时发生错误");
     } finally {
@@ -267,15 +299,15 @@ function AppContent() {
 
   async function handleSearch() {
     if (!query.trim() || loading) return;
+    setSearchPerformed(true); // 标记已执行搜索
+
     try {
       setLoading(true);
       setErr(null);
       Keyboard.dismiss();
-      const [met, aic] = await Promise.all([
-        fetchFromMet(query, 40),
-        fetchFromAIC(query, 40),
-      ]);
-      const merged = dedupeByArtistTitle([...met, ...aic]);
+
+      // ✅ 使用 BFF 获取搜索结果
+      const merged = await fetchSearchFromBff(query);
       const fuse = new Fuse<Item>(merged, {
         includeScore: true,
         threshold: 0.42,
@@ -298,10 +330,11 @@ function AppContent() {
         ranked = ranked.concat(fallback.filter((x) => !seen.has(x.id)));
       }
       setResults(ranked.slice(0, 60));
-    } catch {
-      setErr("Search error");
+    } catch (error) {
+      setErr(error instanceof Error ? error.message : "搜索时发生错误，请检查BFF服务是否运行");
     } finally {
       setLoading(false);
+      // We don't reset searchAttempted here, so the "no results" message can display if needed
     }
   }
 
@@ -373,14 +406,14 @@ function AppContent() {
         {/* Search area */}
         <View
           style={[styles.searchWrap, isLight && styles.paperShadow]}
-          onLayout={(e) =>
-            setSearchEdgeY(e.nativeEvent.layout.y + e.nativeEvent.layout.height)
-          }
         >
           <View
             style={[
               styles.searchRow,
-              { borderColor: P.border, backgroundColor: P.panel },
+              {
+                borderColor: P.border,
+                backgroundColor: P.panel,
+              },
             ]}
           >
             <TextInput
@@ -388,9 +421,7 @@ function AppContent() {
               placeholder="请输入画家或画作名 (Monet / Van Gogh)"
               placeholderTextColor={P.hint}
               value={query}
-              onChangeText={setQuery}
-              returnKeyType="search"
-              onSubmitEditing={handleSearch}
+              onChangeText={handleQueryChange}
             />
             <Pressable
               onPress={handleSearch}
@@ -423,7 +454,9 @@ function AppContent() {
 
         {/* 今日推荐（仅在未输入搜索词时显示） */}
         {!query.trim() && (
-          <View style={{ marginHorizontal: 16, marginBottom: 8 }}>
+          <View
+            style={{ marginHorizontal: 16, marginBottom: 8, marginTop: 20 }}
+          >
             <View
               style={{
                 flexDirection: "row",
@@ -432,42 +465,46 @@ function AppContent() {
               }}
             >
               <Text
-                style={{ color: P.text, fontSize: 16, fontWeight: "700" }}
+                style={{
+                  color: P.text,
+                  fontSize: 16,
+                  fontWeight: "700",
+                  marginLeft: 5,
+                  marginBottom: 10,
+                }}
               >
                 今日推荐
               </Text>
+
               <Pressable
                 onPress={() => fetchTodayPick()}
                 style={({ pressed }) => [
                   {
                     marginLeft: "auto",
                     paddingHorizontal: 10,
-                    paddingVertical: 6,
-                    borderRadius: 8,
-                    borderWidth: 1,
-                    borderColor: P.border,
+                    paddingVertical: 1,
                     opacity: pressed ? 0.7 : 1,
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "center",
                   },
                 ]}
               >
+                <Ionicons name="refresh" size={16} color={P.btnText} />
                 <Text
-                  style={{ color: P.btnText, fontSize: 12, fontWeight: "600" }}
+                  style={{
+                    color: P.btnText,
+                    fontSize: 12,
+                    fontWeight: "600",
+                    marginLeft: 4,
+                  }}
                 >
                   换一幅
                 </Text>
               </Pressable>
             </View>
 
-            {pickLoading ? (
-              <View
-                style={[
-                  styles.card,
-                  { borderColor: P.border, backgroundColor: P.card, padding: 16 },
-                ]}
-              >
-                <Text style={{ color: P.hint }}>加载中...</Text>
-              </View>
-            ) : pickErr ? (
+            {pickErr ? (
               <Text style={{ color: P.hint, fontSize: 12 }}>{pickErr}</Text>
             ) : todayPick ? (
               <Pressable
@@ -478,18 +515,39 @@ function AppContent() {
                 style={({ pressed }) => [
                   styles.card,
                   { borderColor: P.border, backgroundColor: P.card },
-                  pressed && { transform: [{ scale: 0.995 }], borderColor: P.text },
+                  pressed && {
+                    transform: [{ scale: 0.995 }],
+                    borderColor: P.text,
+                  },
                 ]}
               >
                 {/* 统一 4:5 比例 */}
                 <View style={styles.imageBox}>
-                  <ImageWithPlaceholder
-                    source={{ uri: todayPick.thumb }}
-                    style={styles.image}
-                    placeholderColor={P.imgPlaceholder}
-                    darkMode={theme === "dark"}
-                    resizeMode="cover"
-                  />
+                  {pickLoading ? (
+                    <View
+                      style={{
+                        flex: 1,
+                        backgroundColor: P.imgPlaceholder,
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      <Ionicons
+                        name="reload-outline"
+                        size={20}
+                        color={P.hint}
+                        style={{ opacity: 0.6 }}
+                      />
+                    </View>
+                  ) : (
+                    <ImageWithPlaceholder
+                      source={{ uri: todayPick.thumb }}
+                      style={styles.image}
+                      placeholderColor={P.imgPlaceholder}
+                      darkMode={theme === "dark"}
+                      resizeMode="cover"
+                    />
+                  )}
                 </View>
                 <View style={styles.meta}>
                   <Text
@@ -523,20 +581,23 @@ function AppContent() {
 
         {/* 错误提示 */}
         {err && (
-          <Text
-            style={{
-              color: P.hint,
-              fontSize: 12,
-              marginHorizontal: 16,
-              marginBottom: 6,
-            }}
-          >
-            Error: {err}
-          </Text>
+          <View style={{ padding: 16, marginTop: 10 }}>
+            <Text
+              style={{
+                color: '#ff3b30',
+                fontSize: 14,
+                marginBottom: 6,
+                textAlign: 'center',
+                fontWeight: '500'
+              }}
+            >
+              {err}
+            </Text>
+          </View>
         )}
 
-        {/* 无结果占位 */}
-        {!loading && !err && query.trim() && results.length === 0 ? (
+        {/* 无结果占位：仅当执行过搜索、有搜索词且无结果时显示 */}
+        {!loading && query.trim() && results.length === 0 && searchPerformed ? (
           <View style={styles.noResultsContainer}>
             <Image
               source={require("./assets/error.png")}
@@ -554,8 +615,8 @@ function AppContent() {
             maskElement={
               <LinearGradient
                 colors={["#000", "#000", "rgba(0,0,0,0)"]}
-                locations={[0, 0.92, 1]}
-                start={{ x: 0, y: 1 }}
+                locations={[0, 0.96, 1]}
+                start={{ x: 0, y: 0.96 }}
                 end={{ x: 0, y: 0 }}
                 style={StyleSheet.absoluteFillObject}
               />
@@ -627,27 +688,6 @@ function AppContent() {
           </MaskedView>
         )}
 
-        {/* 顶部固定淡出遮罩 */}
-        <LinearGradient
-          pointerEvents="none"
-          colors={[
-            theme === "dark" ? "rgba(11,12,14,0.2)" : "rgba(255,255,255,0.2)",
-            theme === "dark" ? "rgba(11,12,14,0.0)" : "rgba(255,255,255,0.0)",
-          ]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 0, y: 1 }}
-          style={{
-            position: "absolute",
-            top: searchH,
-            left: 0,
-            right: 0,
-            height: 120,
-            zIndex: 20,
-            borderRadius: 10,
-            marginHorizontal: 8,
-          }}
-        />
-
         {/* 详情弹窗 */}
         <ImageDetailsModal
           visible={modalVisible}
@@ -657,15 +697,6 @@ function AppContent() {
           onClose={closeModal}
           onToggleFavorite={handleToggleFavorite}
           isFavorite={selectedItem ? favorites.has(selectedItem.id) : false}
-        />
-
-        {/* 搜索 Loading */}
-        <LoadingOverlay
-          visible={loading}
-          stroke={theme === "dark" ? "#FFFFFF" : "rgba(0,0,0,1)"}
-          bg={theme === "dark" ? "rgba(0,0,0,0.35)" : "rgba(0,0,0,0.12)"}
-          size={12}
-          gap={6}
         />
       </>
     );
@@ -678,7 +709,15 @@ function AppContent() {
     >
       <StatusBar style={theme === "dark" ? "light" : "dark"} />
       <ArtStrokeBg color={P.border} />
-      {renderContent()}
+      <View style={{ flex: 1 }}>{renderContent()}</View>
+      {/* 搜索 Loading */}
+      <LoadingOverlay
+        visible={loading || pickLoading}
+        stroke={theme === "dark" ? "#FFFFFF" : "rgba(0,0,0,1)"}
+        bg={theme === "dark" ? "rgba(0,0,0,0.35)" : "rgba(0,0,0,0.5)"}
+        size={12}
+        gap={6}
+      />
     </SafeAreaView>
   );
 }
@@ -715,19 +754,7 @@ function AppWrapper({
   manualTheme,
   setManualTheme,
 }: AppWrapperProps) {
-  const { user, isLoading, setUser } = useAuth();
-
-  if (isLoading) {
-    return (
-      <View style={[styles.loadingContainer, { backgroundColor: colors.bg }]}>
-        <LoadingOverlay
-          visible={true}
-          stroke={colors.border}
-          bg={theme === "dark" ? "rgba(0,0,0,0.28)" : "rgba(255,255,255,0.28)"}
-        />
-      </View>
-    );
-  }
+  const { user, setUser } = useAuth();
 
   if (!user) {
     return (
