@@ -29,7 +29,7 @@ The project is split into two main parts:
    - Makes API calls to the BFF server
    - Manages local state and authentication
 
-2. **BFF (Backend-for-Frontend) Server** (separate repository: `/my-bff`)
+2. **BFF (Backend-for-Frontend) Server** (separate repository: `/bff`)
    - Built with Next.js
    - Provides API endpoints for searching artwork and daily recommendations
    - Handles data aggregation and deduplication from multiple sources
@@ -60,7 +60,7 @@ The project is split into two main parts:
 
 1. Navigate to the BFF directory:
    ```
-   cd ../my-bff
+   cd ../bff
    ```
 2. Install dependencies:
    ```
@@ -77,7 +77,7 @@ The project is split into two main parts:
 ### Start the BFF Server
 
 ```
-cd ../my-bff
+cd ../bff
 npm run dev
 # or
 yarn dev
@@ -88,9 +88,9 @@ The BFF server will run on http://localhost:3000.
 ### Start the React Native App
 
 ```
-npm start
+npm run ios
 # or
-yarn start
+yarn ios
 ```
 
 This will start the Expo development server, allowing you to run the app on a simulator/emulator or physical device.
