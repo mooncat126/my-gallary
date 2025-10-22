@@ -124,6 +124,12 @@ The app uses Firebase Authentication for user management:
 2. **User Data**: Profile information stored in Firebase
 3. **Favorites Sync**: Favorites are stored both locally and in Firebase for cross-device access
 
+### Test Account
+
+For testing purposes, you can use the following credentials:
+- **Email**: test@user.com
+- **Password**: password123
+
 ## Future Enhancements
 
 1. Password reset functionality
