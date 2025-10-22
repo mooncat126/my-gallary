@@ -7,7 +7,7 @@ interface ArtStrokeBgProps {
 }
 
 /**
- * Decorative SVG background with a single line at the top
+ * Decorative SVG background with a single wavy line
  */
 const ArtStrokeBg: React.FC<ArtStrokeBgProps> = ({ color }) => {
   return (
@@ -15,16 +15,16 @@ const ArtStrokeBg: React.FC<ArtStrokeBgProps> = ({ color }) => {
       pointerEvents="none"
       style={[
         StyleSheet.absoluteFillObject,
-        { height: 100, top: 0 } // Position at the top, with limited height
+        { height: 250, top: 60 } // Position lower, with more height
       ]}
-      viewBox="0 0 400 100"
+      viewBox="0 0 400 250"
     >
-      {/* Single wavy line at the top */}
+      {/* Single wavy line positioned lower and more subtle */}
       <Path
-        d="M0 60 Q 100 20 200 60 T 400 60"
+        d="M0 120 Q 100 80 200 120 T 400 120"
         stroke={color}
-        strokeOpacity="0.2"
-        strokeWidth="1.5"
+        strokeOpacity="0.12"
+        strokeWidth="1.2"
         fill="none"
       />
     </Svg>
