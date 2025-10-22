@@ -51,7 +51,7 @@ export const loginWithEmail = async (email, password) => {
   // Add a small delay to simulate network request
   await new Promise(resolve => setTimeout(resolve, 500));
 
-  if (email === 'test@test.com' && password === '123456') {
+  if (email === 'test@user.com' && password === '123456') {
     console.log('Login successful');
     return {
       user: {

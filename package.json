@@ -5,8 +5,9 @@
   "scripts": {
     "start": "expo start",
     "android": "expo run:android",
-    "ios": "expo run:ios",
-    "web": "expo start --web"
+    "ios": "concurrently \"expo run:ios\" \"npm run start-bff\"",
+    "web": "expo start --web",
+    "start-bff": "cd bff && npm run dev"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "^2.2.0",
@@ -28,6 +29,7 @@
   },
   "devDependencies": {
     "@types/react": "~19.1.0",
+    "concurrently": "^9.2.1",
     "typescript": "~5.9.2"
   },
   "private": true
