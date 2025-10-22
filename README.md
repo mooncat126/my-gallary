@@ -1,8 +1,8 @@
 # MyGallery App
+<img width="500" height="500" alt="MyGallery App" src="https://github.com/user-attachments/assets/bad7c6a0-f6f2-459f-b953-ddaa7697865b" />
 
 A React Native app for browsing and favoriting artwork from various art museum APIs with BFF (Backend-for-Frontend) architecture.
 
-<img width="500" height="500" alt="MyGallery App" src="https://github.com/user-attachments/assets/bad7c6a0-f6f2-459f-b953-ddaa7697865b" />
 
 ## Features
 
@@ -13,6 +13,12 @@ A React Native app for browsing and favoriting artwork from various art museum A
 - Dark and light mode support
 - Responsive design for various device sizes
 - Integrated message component for notifications
+
+| | | |
+|:-:|:-:|:-:|
+| <img width="300" src="https://github.com/user-attachments/assets/369dd31f-9ad9-4686-9aae-69231380e5e9" /> | <img width="300" src="https://github.com/user-attachments/assets/c8db963c-2bdd-449b-b266-bbed1a476ec9" /> | <img width="300" src="https://github.com/user-attachments/assets/5d482b69-af32-441d-aa4a-811ce9727475" /> |
+| <img width="300" src="https://github.com/user-attachments/assets/54e4529b-f1f3-486a-a28d-30b2d6934065" /> | <img width="300" src="https://github.com/user-attachments/assets/56954425-5b1a-4d98-ae31-750f6f2825c6" /> | <img width="300" src="https://github.com/user-attachments/assets/547c0060-b367-4984-94e1-c6ee5f103362" /> |
+| <img width="300" src="https://github.com/user-attachments/assets/d7bf0459-071b-4bdb-8a7e-e066f22de499" /> | <img width="300" src="https://github.com/user-attachments/assets/ed0980e0-4e50-482c-8307-eaab52f6061a" /> | <img width="300" src="https://github.com/user-attachments/assets/dbc851c8-eb12-4585-a3bc-4af15997a160" /> |
 
 ## Project Structure
 
